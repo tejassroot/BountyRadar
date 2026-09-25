@@ -1,0 +1,15 @@
+{
+  "version": "1.2.0",
+  "name": "BountyRadar v1.2.0",
+  "releaseDate": "2026-09-25",
+  "minBrowserVersion": "109.0",
+  "downloadUrl": "https://github.com/tejassroot/BountyRadar/releases/latest",
+  "zipUrl": "https://raw.githubusercontent.com/tejassroot/BountyRadar/main/dist/bountyradar-latest.zip",
+  "changelog": [
+    "Auto-Update Engine: Live notification and 1-click downloads when new versions release",
+    "Active Tab Target Sniffer: Live detection and badge alerts when browsing in-scope targets",
+    "Recon Tool Exporter: 1-click export for Burp Suite Target Scope JSON, Nuclei targets.txt, and Subfinder",
+    "Hunter Bookmarks & Private Notes: Star favorite programs and save confidential recon notes",
+    "Asset Category Filters: Instant triage by Web, API, Mobile, Cloud, Crypto, and Hardware"
+  ]
+}

@@ -15,13 +15,13 @@
 ## 📸 Interface & Live Radar Preview
 
 <p align="center">
-  <img src="assets/images/bountyradar-popup-ui.png" alt="BountyRadar Ultra-Pro Cyberpunk Bento UI" width="370" />
+  <img src="assets/images/bountyradar-v12-showcase.png" alt="BountyRadar v1.2 Auto-Update & Active Scope Sniffer" width="370" />
   &nbsp;&nbsp;&nbsp;&nbsp;
-  <img src="assets/images/bountyradar-search-view.png" alt="BountyRadar Search & Quick Filter Chips" width="370" />
+  <img src="assets/images/bountyradar-popup-ui.png" alt="BountyRadar Ultra-Pro Cyberpunk Bento UI" width="370" />
 </p>
 
-> **Left:** Cyberpunk Bento Grid with 5 reactive metric cards (**13,757+ Programs**, **39,642+ Targets**, **852+ Fresh**, **1,586+ Self-Hosted**, **224+ Private**), global regional radar, and 1-click scope copy.  
-> **Right:** Real-time scope search filtering across 30,000+ wildcard and target assets with instant keyword tags (`api`, `crypto`, `gov`, `mobile`).
+> **Left (v1.2 Showcase):** In-app auto-update notifications, **Active Tab Target Sniffer** (detects current browsing targets), ⭐ Bookmarks, 📝 Private Recon Notes, and multi-tool exports.  
+> **Right:** Cyberpunk Bento Grid with 5 reactive metric cards (**13,757+ Programs**, **39,642+ Targets**, **852+ Fresh**, **1,586+ Self-Hosted**, **224+ Private**), global regional radar, and 1-click scope copy.
 
 ---
 
@@ -97,15 +97,18 @@ cd BountyRadar; npx web-ext run
 
 | Feature | Description |
 | :--- | :--- |
+| **🚀 In-App Auto-Updates** | Checks GitHub releases in the background and alerts researchers with 1-click update downloads. |
+| **🎯 Active Tab Target Sniffer** | Instantly highlights when you browse an in-scope website (`💰 $15,000` / `🎯 In-Scope`). |
+| **🧰 Multi-Tool Exporter** | 1-Click exports for **Nuclei** (`targets.txt`), **Burp Suite Scope** (`burp_scope.json`), and **Subfinder**. |
+| **⭐ Bookmarks & 📝 Notes** | Star favorite programs and write private confidential recon notes directly onto target cards. |
 | **⚡ Zero-Click Sync** | Automatically pulls fresh data on startup; no manual sync clicking needed. |
 | **🎯 Wildcard Radar** | Isolate 1,800+ wildcard domain programs (`*.example.com`) for massive subdomain expansion. |
 | **🌍 Country & TLD Radar** | Filter across 20+ national and sovereign domains (`.gov`, `.de`, `.uk`, `.nl`, `.in`, `.ch`, `.au`, `.ca`, `.fr`, etc.). |
-| **♾️ Unlimited Live Ingestion** | Ingests 12,500+ programs and 30,000+ targets dynamically with cache-busting live diffs. |
+| **♾️ Unlimited Live Ingestion** | Ingests 13,750+ programs and 39,600+ targets dynamically with cache-busting live diffs. |
 | **📊 5-Card Bento Grid** | Real-time counts for **Programs**, **🎯 Targets**, **🔥 Fresh**, **🌐 Self-Hosted**, and **🔒 Private**. |
 | **📋 1-Click Scope Copy** | Click **"Copy Scope"** on any program to copy all target domains formatted for recon CLI tools. |
-| **🏷️ Quick Hunter Tags** | One-click chips for `Wildcard (*)`, `API`, `Crypto`, `Mobile`, `Hall of Fame`, `security.txt`, etc. |
+| **🏷️ Asset Category Chips** | Filter across `Web`, `API`, `Mobile`, `Cloud`, `Crypto`, and `Hardware/IoT`. |
 | **🔍 Smart Search & Hotkey** | Press **`/`** to focus search across 30,000+ target domains, companies, countries, and platforms. |
-| **📥 JSON Export** | Export filtered programs to structured JSON for automation pipelines. |
 
 ---
 

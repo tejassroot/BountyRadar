@@ -1,0 +1,12 @@
+{
+  "addons": {
+    "bountyradar@tejassroot.github.io": {
+      "updates": [
+        {
+          "version": "1.2.0",
+          "update_link": "https://raw.githubusercontent.com/tejassroot/BountyRadar/main/dist/bountyradar-latest.zip"
+        }
+      ]
+    }
+  }
+}

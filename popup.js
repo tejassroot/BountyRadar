@@ -1,11 +1,21 @@
 /**
- * BountyRadar Ultra-Pro Controller
- * Manages reactive state, bento card interactions, smart keyword filtering,
- * one-click scope copying, and zero-click autonomous background sync.
+ * BountyRadar Ultra-Pro Controller (v1.2)
+ * Manages:
+ * - Reactive state & 5-card bento grid
+ * - In-app auto-update notifications
+ * - Active tab target sniffer (current browsing scope detection)
+ * - Multi-tool recon exporters (Burp Suite Target Scope, Nuclei, Subfinder, JSON)
+ * - Hunter bookmarks (⭐) and confidential recon notes (📝)
+ * - Asset category tags (Web, API, Mobile, Cloud, Crypto, Hardware)
+ * - Zero-click autonomous background sync
  */
 
 const state = {
   programs: [],
+  bookmarks: [],
+  notes: {},
+  updateInfo: null,
+  activeTabMatch: null,
   lastSync: 0,
   newCount: 0,
   isSyncing: false,
@@ -30,12 +40,31 @@ const syncBtn = document.getElementById("sync-btn");
 const syncIcon = document.getElementById("sync-icon");
 const syncText = document.getElementById("sync-text");
 const exportBtn = document.getElementById("export-btn");
+const exportMenu = document.getElementById("export-menu");
+const exportOptBtns = document.querySelectorAll(".export-opt-btn");
 const markReadBtn = document.getElementById("mark-read-btn");
 const lastSyncLabel = document.getElementById("last-sync-label");
 const toastEl = document.getElementById("toast-notify");
 const toastMsg = document.getElementById("toast-msg");
 const toastIcon = document.getElementById("toast-icon");
 
+// Update Banner Elements
+const updateBanner = document.getElementById("update-banner");
+const updateTitle = document.getElementById("update-title");
+const updateDesc = document.getElementById("update-desc");
+const updateDownloadBtn = document.getElementById("update-download-btn");
+const updateReleaseBtn = document.getElementById("update-release-btn");
+const updateDismissBtn = document.getElementById("update-dismiss-btn");
+
+// Active Tab Sniffer Elements
+const activeTabBanner = document.getElementById("active-tab-banner");
+const activeTabName = document.getElementById("active-tab-name");
+const activeTabReward = document.getElementById("active-tab-reward");
+const activeTabDomains = document.getElementById("active-tab-domains");
+const activeTabCopyBtn = document.getElementById("active-tab-copy-btn");
+const activeTabPolicyLink = document.getElementById("active-tab-policy-link");
+
+// Metrics Counters
 const statTotalEl = document.getElementById("stat-total");
 const statTargetsEl = document.getElementById("stat-targets");
 const statFreshEl = document.getElementById("stat-fresh");
@@ -83,6 +112,29 @@ function updateMetrics() {
   lastSyncLabel.textContent = `Last synced: ${timeAgo(state.lastSync)}`;
 }
 
+// Category matcher helper for asset types
+function checkCategory(p, cat) {
+  const domainsStr = Array.isArray(p.domains) ? p.domains.join(" ").toLowerCase() : "";
+  const tagsStr = Array.isArray(p.tags) ? p.tags.join(" ").toLowerCase() : "";
+  const corpus = `${p.name || ""} ${p.url || ""} ${domainsStr} ${tagsStr}`.toLowerCase();
+
+  switch (cat) {
+    case "api":
+      return corpus.includes("api") || domainsStr.includes("api.") || domainsStr.includes("graphql");
+    case "mobile":
+      return corpus.includes("mobile") || corpus.includes("android") || corpus.includes("ios") || corpus.includes("apk");
+    case "cloud":
+      return corpus.includes("cloud") || corpus.includes("aws") || corpus.includes("azure") || corpus.includes("gcp") || corpus.includes("s3");
+    case "crypto":
+      return corpus.includes("crypto") || corpus.includes("blockchain") || corpus.includes("wallet") || corpus.includes("token") || corpus.includes("defi");
+    case "hardware":
+      return corpus.includes("hardware") || corpus.includes("iot") || corpus.includes("device") || corpus.includes("firmware");
+    case "web":
+    default:
+      return Boolean(p.domains && p.domains.length > 0);
+  }
+}
+
 function matchesFilter(p) {
   if (state.activeCountry !== "all") {
     const pCode = (p.country && p.country.code) || "GL";
@@ -92,6 +144,8 @@ function matchesFilter(p) {
       return false;
     }
   }
+
+  if (state.activeFilter === "bookmarks") return state.bookmarks.includes(p.id);
   if (state.activeFilter === "wildcards") return Boolean(p.isWildcard);
   if (state.activeFilter === "fresh") return p.isNew;
   if (state.activeFilter === "private") return p.isPrivate;
@@ -100,6 +154,12 @@ function matchesFilter(p) {
   if (state.activeFilter === "hackerone") return p.platform === "HackerOne";
   if (state.activeFilter === "bounty") return p.hasBounty;
   if (state.activeFilter === "vdp") return !p.hasBounty;
+
+  // Asset category filters
+  if (["web", "api", "mobile", "cloud", "crypto", "hardware"].includes(state.activeFilter)) {
+    return checkCategory(p, state.activeFilter);
+  }
+
   return true;
 }
 
@@ -110,7 +170,8 @@ function matchesSearch(p, query) {
 
   const domainsStr = Array.isArray(p.domains) ? p.domains.join(" ") : "";
   const tagsStr = Array.isArray(p.tags) ? p.tags.join(" ") : "";
-  const corpus = `${p.name || ""} ${p.url || ""} ${p.platform || ""} ${domainsStr} ${tagsStr} ${p.isWildcard ? "wildcard *. " : ""} ${p.isPrivate ? "private nda unlisted" : ""} ${p.isSelfHosted ? "self-hosted selfhosted independent" : ""} ${p.hasBounty ? "bounty cash paid reward money" : "vdp hall of fame hof free"} ${p.isNew ? "new fresh" : ""}`.toLowerCase();
+  const userNote = state.notes[p.id] || "";
+  const corpus = `${p.name || ""} ${p.url || ""} ${p.platform || ""} ${domainsStr} ${tagsStr} ${userNote} ${p.isWildcard ? "wildcard *. " : ""} ${p.isPrivate ? "private nda unlisted" : ""} ${p.isSelfHosted ? "self-hosted selfhosted independent" : ""} ${p.hasBounty ? "bounty cash paid reward money" : "vdp hall of fame hof free"} ${p.isNew ? "new fresh" : ""}`.toLowerCase();
 
   return terms.every((term) => {
     if (term === "wildcard" || term === "*") return Boolean(p.isWildcard);
@@ -121,12 +182,92 @@ function matchesSearch(p, query) {
     if (term === "fresh") return p.isNew || corpus.includes("fresh") || corpus.includes("new");
     if (term === "private") return p.isPrivate || corpus.includes("private") || corpus.includes("nda");
     if (term === "self-hosted" || term === "selfhosted") return p.isSelfHosted || corpus.includes("self-hosted");
+    if (term === "bookmarked" || term === "bookmark") return state.bookmarks.includes(p.id);
+    if (term === "note" || term === "notes") return Boolean(state.notes[p.id]);
     return corpus.includes(term);
   });
 }
 
+// Active Tab Domain Matcher
+function matchDomainAgainstPrograms(host, programs) {
+  if (!host || !programs || programs.length === 0) return null;
+  const cleanHost = host.toLowerCase().trim();
+
+  for (const prog of programs) {
+    if (!prog) continue;
+    try {
+      if (new URL(prog.url).hostname.toLowerCase() === cleanHost) return prog;
+    } catch (_) {}
+
+    if (Array.isArray(prog.domains)) {
+      for (const d of prog.domains) {
+        const cleanD = d.toLowerCase().trim();
+        if (cleanD === cleanHost) return prog;
+        if (cleanD.startsWith("*.")) {
+          const root = cleanD.slice(2);
+          if (cleanHost === root || cleanHost.endsWith("." + root)) {
+            return prog;
+          }
+        }
+      }
+    }
+  }
+  return null;
+}
+
+function renderActiveTabBanner(host, prog) {
+  if (!prog || !activeTabBanner) return;
+  activeTabBanner.classList.remove("hidden");
+  activeTabName.textContent = prog.name;
+  activeTabReward.textContent = prog.hasBounty ? (prog.maxReward || "Bounty") : "VDP";
+  activeTabReward.className = `badge ${prog.hasBounty ? "badge-bounty" : "badge-vdp"}`;
+
+  activeTabPolicyLink.href = prog.url;
+  activeTabPolicyLink.title = `Open ${prog.name} rules & policy`;
+
+  activeTabDomains.replaceChildren();
+  if (Array.isArray(prog.domains)) {
+    for (const d of prog.domains.slice(0, 4)) {
+      const code = document.createElement("code");
+      code.textContent = d;
+      activeTabDomains.appendChild(code);
+    }
+    if (prog.domains.length > 4) {
+      const more = document.createElement("span");
+      more.textContent = `+${prog.domains.length - 4} more`;
+      more.style.color = "var(--text-muted)";
+      activeTabDomains.appendChild(more);
+    }
+  }
+
+  activeTabCopyBtn.onclick = () => {
+    navigator.clipboard.writeText((prog.domains || []).join("\n")).then(() => {
+      showToast(`Copied ${prog.domains.length} in-scope domains!`, "📋");
+    });
+  };
+}
+
+function renderUpdateBanner() {
+  if (!updateBanner) return;
+  if (state.updateInfo && state.updateInfo.hasUpdate) {
+    updateBanner.classList.remove("hidden");
+    if (updateTitle) updateTitle.textContent = `🚀 Update v${state.updateInfo.newVersion} Available!`;
+    if (updateDesc) updateDesc.textContent = `Current v${state.updateInfo.currentVersion} • Ready to download`;
+    if (updateDownloadBtn) updateDownloadBtn.href = state.updateInfo.zipUrl || "https://github.com/tejassroot/BountyRadar/releases";
+    if (updateReleaseBtn) updateReleaseBtn.href = state.updateInfo.downloadUrl || "https://github.com/tejassroot/BountyRadar/releases";
+  } else {
+    updateBanner.classList.add("hidden");
+  }
+}
+
+if (updateDismissBtn) {
+  updateDismissBtn.addEventListener("click", () => {
+    updateBanner.classList.add("hidden");
+  });
+}
+
 function renderList() {
-  programListEl.innerHTML = "";
+  programListEl.replaceChildren();
   const q = state.searchQuery.trim().toLowerCase();
 
   const filtered = state.programs.filter((p) => matchesFilter(p) && matchesSearch(p, q));
@@ -146,6 +287,8 @@ function renderList() {
     emptyEl.classList.remove("hidden");
     if (q) {
       emptyTitleEl.textContent = `No programs match "${state.searchQuery}"`;
+    } else if (state.activeFilter === "bookmarks") {
+      emptyTitleEl.textContent = "No bookmarked programs yet";
     } else if (state.activeFilter === "fresh") {
       emptyTitleEl.textContent = "No fresh programs discovered yet";
     } else {
@@ -155,11 +298,13 @@ function renderList() {
   }
   emptyEl.classList.add("hidden");
 
-  // Virtual slice: render up to 120 for instant 60fps responsiveness
   const displaySlice = filtered.slice(0, 120);
   const fragment = document.createDocumentFragment();
 
   for (const prog of displaySlice) {
+    const isBookmarked = state.bookmarks.includes(prog.id);
+    const existingNote = state.notes[prog.id] || "";
+
     const card = document.createElement("div");
     card.className = `program-card ${prog.isNew ? "is-new-card" : ""}`;
 
@@ -236,8 +381,40 @@ function renderList() {
       badges.appendChild(wildBadge);
     }
 
+    // Hunter Tools: Bookmark ⭐ & Recon Note 📝
+    const tools = document.createElement("div");
+    tools.className = "card-tools";
+
+    const starBtn = document.createElement("button");
+    starBtn.className = `tool-btn btn-bookmark ${isBookmarked ? "is-bookmarked" : ""}`;
+    starBtn.textContent = isBookmarked ? "★" : "☆";
+    starBtn.title = isBookmarked ? "Remove from bookmarks" : "Bookmark this program";
+    starBtn.addEventListener("click", async (e) => {
+      e.stopPropagation();
+      const res = await chrome.runtime.sendMessage({
+        type: "BOUNTYRADAR_TOGGLE_BOOKMARK",
+        id: prog.id
+      });
+      if (res && res.ok) {
+        state.bookmarks = res.bookmarks;
+        starBtn.className = `tool-btn btn-bookmark ${res.isBookmarked ? "is-bookmarked" : ""}`;
+        starBtn.textContent = res.isBookmarked ? "★" : "☆";
+        showToast(res.isBookmarked ? `Bookmarked ${prog.name}` : `Removed bookmark`, "⭐");
+        if (state.activeFilter === "bookmarks") renderList();
+      }
+    });
+
+    const noteBtn = document.createElement("button");
+    noteBtn.className = `tool-btn btn-note ${existingNote ? "has-notes" : ""}`;
+    noteBtn.textContent = "📝";
+    noteBtn.title = existingNote ? "View / Edit Recon Notes" : "Add Private Recon Note";
+
+    tools.appendChild(starBtn);
+    tools.appendChild(noteBtn);
+
     top.appendChild(ident);
     top.appendChild(badges);
+    top.appendChild(tools);
     card.appendChild(top);
 
     // Domains Scope Preview with 1-Click Copy
@@ -268,6 +445,87 @@ function renderList() {
       card.appendChild(scopeRow);
     }
 
+    // Display Saved Recon Note if exists
+    if (existingNote) {
+      const noteDisplay = document.createElement("div");
+      noteDisplay.className = "display-saved-note";
+      noteDisplay.textContent = `📝 Note: ${existingNote}`;
+      card.appendChild(noteDisplay);
+    }
+
+    // Notes Drawer (Expandable)
+    const notesDrawer = document.createElement("div");
+    notesDrawer.className = "notes-drawer hidden";
+
+    const textarea = document.createElement("textarea");
+    textarea.className = "notes-textarea";
+    textarea.placeholder = "Confidential hunter notes (e.g. found open redirect, staging endpoints, tested CVEs)...";
+    textarea.value = existingNote;
+
+    const notesActions = document.createElement("div");
+    notesActions.className = "notes-actions";
+
+    const saveNoteBtn = document.createElement("button");
+    saveNoteBtn.className = "btn-note-action btn-note-save";
+    saveNoteBtn.textContent = "Save Note";
+
+    const delNoteBtn = document.createElement("button");
+    delNoteBtn.className = "btn-note-action btn-note-delete";
+    delNoteBtn.textContent = "Clear";
+
+    const cancelNoteBtn = document.createElement("button");
+    cancelNoteBtn.className = "btn-note-action btn-note-cancel";
+    cancelNoteBtn.textContent = "Cancel";
+
+    saveNoteBtn.addEventListener("click", async (e) => {
+      e.stopPropagation();
+      const val = textarea.value.trim();
+      const res = await chrome.runtime.sendMessage({
+        type: "BOUNTYRADAR_SAVE_NOTE",
+        id: prog.id,
+        note: val
+      });
+      if (res && res.ok) {
+        state.notes = res.notes;
+        showToast("Recon note saved!", "📝");
+        renderList();
+      }
+    });
+
+    delNoteBtn.addEventListener("click", async (e) => {
+      e.stopPropagation();
+      const res = await chrome.runtime.sendMessage({
+        type: "BOUNTYRADAR_SAVE_NOTE",
+        id: prog.id,
+        note: ""
+      });
+      if (res && res.ok) {
+        state.notes = res.notes;
+        showToast("Note cleared", "🗑️");
+        renderList();
+      }
+    });
+
+    cancelNoteBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      notesDrawer.classList.add("hidden");
+    });
+
+    noteBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      notesDrawer.classList.toggle("hidden");
+      if (!notesDrawer.classList.contains("hidden")) {
+        textarea.focus();
+      }
+    });
+
+    notesActions.appendChild(delNoteBtn);
+    notesActions.appendChild(cancelNoteBtn);
+    notesActions.appendChild(saveNoteBtn);
+    notesDrawer.appendChild(textarea);
+    notesDrawer.appendChild(notesActions);
+    card.appendChild(notesDrawer);
+
     // Footer
     const footer = document.createElement("div");
     footer.className = "card-footer";
@@ -292,6 +550,124 @@ function renderList() {
   }
 
   programListEl.appendChild(fragment);
+}
+
+// Recon Tool File Download Helper
+function downloadFile(content, filename, mimeType) {
+  const blob = new Blob([content], { type: mimeType });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+// Multi-Tool Export Handlers
+function exportForNuclei(filteredPrograms) {
+  const urlSet = new Set();
+  for (const p of filteredPrograms) {
+    if (Array.isArray(p.domains)) {
+      for (const d of p.domains) {
+        const clean = d.replace(/^\*\.?/, "").trim();
+        if (clean) {
+          urlSet.add(`https://${clean}`);
+          urlSet.add(`http://${clean}`);
+        }
+      }
+    }
+  }
+  const data = Array.from(urlSet).join("\n");
+  downloadFile(data, `bountyradar-nuclei-targets-${Date.now()}.txt`, "text/plain");
+  showToast(`Exported ${urlSet.size} targets for Nuclei!`, "⚡");
+}
+
+function exportForBurpScope(filteredPrograms) {
+  const includeRules = [];
+  for (const p of filteredPrograms) {
+    if (Array.isArray(p.domains)) {
+      for (const d of p.domains) {
+        const isWild = d.startsWith("*.");
+        const root = isWild ? d.slice(2).trim() : d.trim();
+        const hostRegex = isWild ? `^.*\\.${root.replace(/\./g, "\\.")}$` : `^${root.replace(/\./g, "\\.")}$`;
+        includeRules.push({
+          enabled: true,
+          host: hostRegex,
+          protocol: "any"
+        });
+      }
+    }
+  }
+  const burpScope = {
+    target: {
+      scope: {
+        advanced_mode: true,
+        include: includeRules
+      }
+    }
+  };
+  downloadFile(JSON.stringify(burpScope, null, 2), `bountyradar-burp-scope-${Date.now()}.json`, "application/json");
+  showToast(`Exported ${includeRules.length} Burp Scope rules!`, "🎯");
+}
+
+function exportForSubfinder(filteredPrograms) {
+  const domainSet = new Set();
+  for (const p of filteredPrograms) {
+    if (Array.isArray(p.domains)) {
+      for (const d of p.domains) {
+        const clean = d.replace(/^\*\.?/, "").trim().toLowerCase();
+        if (clean) domainSet.add(clean);
+      }
+    }
+  }
+  const data = Array.from(domainSet).join("\n");
+  downloadFile(data, `bountyradar-subfinder-domains-${Date.now()}.txt`, "text/plain");
+  showToast(`Exported ${domainSet.size} domains for Subfinder!`, "📡");
+}
+
+function exportFullJSON(filteredPrograms) {
+  downloadFile(JSON.stringify(filteredPrograms, null, 2), `bountyradar-${state.activeFilter}-${Date.now()}.json`, "application/json");
+  showToast(`Exported ${filteredPrograms.length} programs!`, "📥");
+}
+
+// Export Menu Toggle
+if (exportBtn && exportMenu) {
+  exportBtn.addEventListener("click", (e) => {
+    e.stopPropagation();
+    exportMenu.classList.toggle("hidden");
+  });
+
+  document.addEventListener("click", (e) => {
+    if (!exportMenu.contains(e.target) && e.target !== exportBtn) {
+      exportMenu.classList.add("hidden");
+    }
+  });
+
+  exportOptBtns.forEach((btn) => {
+    btn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      exportMenu.classList.add("hidden");
+      const exportType = btn.getAttribute("data-export");
+      const q = state.searchQuery.trim().toLowerCase();
+      const exportData = state.programs.filter((p) => matchesFilter(p) && matchesSearch(p, q));
+
+      switch (exportType) {
+        case "nuclei":
+          exportForNuclei(exportData);
+          break;
+        case "burp":
+          exportForBurpScope(exportData);
+          break;
+        case "subfinder":
+          exportForSubfinder(exportData);
+          break;
+        case "json":
+        default:
+          exportFullJSON(exportData);
+          break;
+      }
+    });
+  });
 }
 
 async function triggerAutoSync() {
@@ -319,9 +695,13 @@ async function triggerAutoSync() {
     const updated = await chrome.runtime.sendMessage({ type: "BOUNTYRADAR_GET_STATE" });
     if (updated && updated.ok) {
       state.programs = updated.programs || [];
+      state.bookmarks = updated.bookmarks || [];
+      state.notes = updated.notes || {};
+      state.updateInfo = updated.updateInfo || null;
       state.lastSync = updated.lastSync || 0;
       state.newCount = updated.newCount || 0;
       updateMetrics();
+      renderUpdateBanner();
       renderList();
     }
   }
@@ -332,12 +712,41 @@ async function refreshState() {
     const res = await chrome.runtime.sendMessage({ type: "BOUNTYRADAR_GET_STATE" });
     if (res && res.ok) {
       state.programs = res.programs || [];
+      state.bookmarks = res.bookmarks || [];
+      state.notes = res.notes || {};
+      state.updateInfo = res.updateInfo || null;
       state.lastSync = res.lastSync || 0;
       state.newCount = res.newCount || 0;
       state.isSyncing = res.isSyncing || false;
 
       updateMetrics();
+      renderUpdateBanner();
       renderList();
+
+      // Active tab detection
+      if (chrome.tabs && chrome.tabs.query) {
+        chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+          if (tabs && tabs[0] && tabs[0].url) {
+            try {
+              const host = new URL(tabs[0].url).hostname;
+              const matched = matchDomainAgainstPrograms(host, state.programs);
+              if (matched) {
+                renderActiveTabBanner(host, matched);
+              } else if (activeTabBanner) {
+                activeTabBanner.classList.add("hidden");
+              }
+            } catch (_) {}
+          }
+        });
+      }
+
+      // Check for updates if not checked recently
+      chrome.runtime.sendMessage({ type: "BOUNTYRADAR_CHECK_UPDATE" }).then((upRes) => {
+        if (upRes && upRes.updateInfo) {
+          state.updateInfo = upRes.updateInfo;
+          renderUpdateBanner();
+        }
+      }).catch(() => {});
 
       // AUTOMATIC ZERO-CLICK SYNC: If storage is empty or older than 2 hours, auto-sync immediately!
       const isStale = !state.lastSync || (Date.now() - state.lastSync > 1000 * 60 * 120);
@@ -382,7 +791,7 @@ metricCards.forEach((card) => {
   });
 });
 
-// Quick Tags / Chips
+// Quick Tags / Chips (Includes Asset Categories)
 chipsBtns.forEach((chip) => {
   chip.addEventListener("click", () => {
     const word = chip.getAttribute("data-word");
@@ -435,21 +844,6 @@ markReadBtn.addEventListener("click", async () => {
   await chrome.runtime.sendMessage({ type: "BOUNTYRADAR_MARK_READ" });
   showToast("All fresh badges cleared", "✓");
   await refreshState();
-});
-
-// Export JSON
-exportBtn.addEventListener("click", () => {
-  const q = state.searchQuery.trim().toLowerCase();
-  const exportData = state.programs.filter((p) => matchesFilter(p) && matchesSearch(p, q));
-
-  const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: "application/json" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = `bountyradar-${state.activeFilter}-${Date.now()}.json`;
-  a.click();
-  URL.revokeObjectURL(url);
-  showToast(`Exported ${exportData.length} programs!`, "📥");
 });
 
 // Global Keyboard Shortcut: '/' to search

@@ -12,6 +12,22 @@
     <span id="toast-msg">Notification</span>
   </div>
 
+  <!-- In-App Auto-Update Banner -->
+  <div id="update-banner" class="update-banner hidden">
+    <div class="update-info">
+      <span class="update-sparkle">🚀</span>
+      <div class="update-text">
+        <span class="update-title" id="update-title">Update Available!</span>
+        <span class="update-desc" id="update-desc">v1.2 is live with new features</span>
+      </div>
+    </div>
+    <div class="update-actions">
+      <a id="update-download-btn" href="https://raw.githubusercontent.com/tejassroot/BountyRadar/main/dist/bountyradar-latest.zip" target="_blank" class="update-btn download-btn">Download</a>
+      <a id="update-release-btn" href="https://github.com/tejassroot/BountyRadar/releases" target="_blank" class="update-btn release-btn">Changelog</a>
+      <button id="update-dismiss-btn" class="update-dismiss" title="Dismiss">×</button>
+    </div>
+  </div>
+
   <!-- Header -->
   <header class="app-header">
     <div class="logo-group">
@@ -23,7 +39,7 @@
       <div class="title-meta">
         <div class="title-row">
           <h1 class="app-title">BountyRadar</h1>
-          <span class="version-badge">v1.1</span>
+          <span class="version-badge">v1.2</span>
         </div>
         <div class="status-indicator">
           <span class="live-dot"></span>
@@ -39,12 +55,46 @@
         </svg>
         <span id="sync-text">Sync</span>
       </button>
-      <button id="export-btn" class="action-btn secondary-action" title="Export programs as JSON">
-        <svg class="action-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/>
-        </svg>
-        <span>Export</span>
-      </button>
+
+      <!-- Advanced Recon Exporter Dropdown -->
+      <div class="export-dropdown-wrapper">
+        <button id="export-btn" class="action-btn secondary-action" title="Export targets for recon tools">
+          <svg class="action-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/>
+          </svg>
+          <span>Export ▾</span>
+        </button>
+        <div id="export-menu" class="export-menu hidden">
+          <button class="export-opt-btn" data-export="json">
+            <span class="opt-icon">📄</span>
+            <div class="opt-info">
+              <span class="opt-name">Full JSON Data</span>
+              <span class="opt-sub">Complete program metadata</span>
+            </div>
+          </button>
+          <button class="export-opt-btn" data-export="nuclei">
+            <span class="opt-icon">⚡</span>
+            <div class="opt-info">
+              <span class="opt-name">Nuclei Targets</span>
+              <span class="opt-sub">Formatted for nuclei -l targets.txt</span>
+            </div>
+          </button>
+          <button class="export-opt-btn" data-export="burp">
+            <span class="opt-icon">🎯</span>
+            <div class="opt-info">
+              <span class="opt-name">Burp Suite Scope</span>
+              <span class="opt-sub">Import into Burp Target Scope</span>
+            </div>
+          </button>
+          <button class="export-opt-btn" data-export="subfinder">
+            <span class="opt-icon">📡</span>
+            <div class="opt-info">
+              <span class="opt-name">Subfinder / Amass</span>
+              <span class="opt-sub">Wildcard domains list</span>
+            </div>
+          </button>
+        </div>
+      </div>
     </div>
   </header>
 
@@ -84,7 +134,7 @@
       <button id="search-clear" class="btn-clear hidden" title="Clear search">×</button>
     </div>
 
-    <!-- Quick Common Words Chips -->
+    <!-- Quick Hunter Tags & Asset Categories -->
     <div class="common-chips-wrapper">
       <div class="common-chips-bar" id="chips-bar">
         <span class="chips-title">TAGS:</span>
@@ -94,9 +144,12 @@
         <button class="chip-btn" data-word="self-hosted">🌐 Self-Hosted</button>
         <button class="chip-btn" data-word="bugcrowd">🐞 Bugcrowd</button>
         <button class="chip-btn" data-word="hackerone">🎯 HackerOne</button>
+        <button class="chip-btn" data-word="web">🌐 Web</button>
         <button class="chip-btn" data-word="api">⚡ API</button>
-        <button class="chip-btn" data-word="crypto">💳 Crypto</button>
         <button class="chip-btn" data-word="mobile">📱 Mobile</button>
+        <button class="chip-btn" data-word="cloud">☁️ Cloud</button>
+        <button class="chip-btn" data-word="crypto">💳 Crypto</button>
+        <button class="chip-btn" data-word="hardware">🔌 Hardware/IoT</button>
         <button class="chip-btn" data-word="hall-of-fame">🏆 Hall of Fame</button>
         <button class="chip-btn" data-word="security.txt">📜 security.txt</button>
         <button class="chip-btn" data-word="safe-harbor">🛡️ Safe Harbor</button>
@@ -107,6 +160,7 @@
     <div class="filter-tabs-wrapper">
       <div class="filter-tabs">
         <button class="tab-btn active" data-filter="all">All</button>
+        <button class="tab-btn" data-filter="bookmarks">⭐ Bookmarks</button>
         <button class="tab-btn" data-filter="wildcards">🎯 Wildcards</button>
         <button class="tab-btn" data-filter="fresh">🔥 Fresh</button>
         <button class="tab-btn" data-filter="private">🔒 Private</button>
@@ -144,6 +198,28 @@
 
   <!-- Content List -->
   <main class="content-area">
+    <!-- Active Tab Target Sniffer Alert (Visible when active browser tab is in-scope) -->
+    <div id="active-tab-banner" class="active-tab-card hidden">
+      <div class="active-tab-top">
+        <div class="active-tab-radar-pulse">
+          <span class="sonar-ring"></span>
+          <span class="sonar-core"></span>
+        </div>
+        <div class="active-tab-meta">
+          <div class="active-tab-badge-row">
+            <span class="active-tab-pill">🎯 CURRENT TAB IN SCOPE</span>
+            <span id="active-tab-reward" class="badge-reward"></span>
+          </div>
+          <h2 class="active-tab-name" id="active-tab-name">Company Name</h2>
+        </div>
+        <div class="active-tab-actions">
+          <button id="active-tab-copy-btn" class="btn-active-action" title="Copy in-scope domains">📋 Copy Scope</button>
+          <a id="active-tab-policy-link" href="#" target="_blank" class="btn-active-action primary" title="View Target Rules & Scope">Policy ↗</a>
+        </div>
+      </div>
+      <div class="active-tab-domains" id="active-tab-domains"></div>
+    </div>
+
     <div id="loading-state" class="state-box hidden">
       <div class="cyber-spinner"></div>
       <p class="state-heading">Synchronizing Global Bounty Feeds</p>

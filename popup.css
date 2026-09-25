@@ -928,3 +928,434 @@ body {
 .footer-github-link:hover {
   color: var(--accent-cyan);
 }
+
+/* ==========================================================================
+   Auto-Update Banner
+   ========================================================================== */
+.update-banner {
+  background: linear-gradient(90deg, rgba(245, 158, 11, 0.22) 0%, rgba(56, 189, 248, 0.22) 100%);
+  border-bottom: 1px solid rgba(245, 158, 11, 0.45);
+  padding: 8px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  animation: bannerFade 0.3s ease-out;
+}
+
+.update-banner.hidden {
+  display: none !important;
+}
+
+@keyframes bannerFade {
+  from { opacity: 0; transform: translateY(-8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.update-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.update-sparkle {
+  font-size: 16px;
+}
+
+.update-text {
+  display: flex;
+  flex-direction: column;
+}
+
+.update-title {
+  font-size: 11px;
+  font-weight: 700;
+  color: #fff;
+}
+
+.update-desc {
+  font-size: 10px;
+  color: #cbd5e1;
+}
+
+.update-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.update-btn {
+  padding: 3px 9px;
+  border-radius: 4px;
+  font-size: 10px;
+  font-weight: 700;
+  text-decoration: none;
+  transition: all 0.2s;
+}
+
+.update-btn.download-btn {
+  background: var(--accent-amber);
+  color: #0b1120;
+}
+
+.update-btn.download-btn:hover {
+  background: #fbbf24;
+  box-shadow: 0 0 8px rgba(245, 158, 11, 0.5);
+}
+
+.update-btn.release-btn {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text-main);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+}
+
+.update-btn.release-btn:hover {
+  background: rgba(255, 255, 255, 0.15);
+  color: #fff;
+}
+
+.update-dismiss {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  font-size: 16px;
+  cursor: pointer;
+  padding: 0 4px;
+}
+
+.update-dismiss:hover {
+  color: #fff;
+}
+
+/* ==========================================================================
+   Export Dropdown Menu
+   ========================================================================== */
+.export-dropdown-wrapper {
+  position: relative;
+}
+
+.export-menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  width: 210px;
+  background: rgba(14, 21, 38, 0.98);
+  border: 1px solid var(--border-active);
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.7), 0 0 16px rgba(56, 189, 248, 0.2);
+  backdrop-filter: blur(12px);
+  border-radius: var(--radius-md);
+  padding: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  z-index: 200;
+  animation: menuDrop 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.export-menu.hidden {
+  display: none !important;
+}
+
+@keyframes menuDrop {
+  from { opacity: 0; transform: translateY(-6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.export-opt-btn {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 10px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-main);
+  cursor: pointer;
+  text-align: left;
+  transition: all 0.15s ease;
+}
+
+.export-opt-btn:hover {
+  background: rgba(56, 189, 248, 0.12);
+  border-color: rgba(56, 189, 248, 0.3);
+  color: #fff;
+}
+
+.export-opt-btn .opt-icon {
+  font-size: 15px;
+}
+
+.export-opt-btn .opt-info {
+  display: flex;
+  flex-direction: column;
+}
+
+.export-opt-btn .opt-name {
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.export-opt-btn .opt-sub {
+  font-size: 9px;
+  color: var(--text-muted);
+}
+
+/* ==========================================================================
+   Active Tab Target Sniffer Alert Card
+   ========================================================================== */
+.active-tab-card {
+  margin: 10px 16px 6px;
+  padding: 10px 14px;
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.15) 0%, rgba(6, 182, 212, 0.1) 100%);
+  border: 1px solid rgba(16, 185, 129, 0.5);
+  box-shadow: 0 0 20px rgba(16, 185, 129, 0.2);
+  border-radius: var(--radius-lg);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.active-tab-card.hidden {
+  display: none !important;
+}
+
+.active-tab-top {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.active-tab-radar-pulse {
+  position: relative;
+  width: 22px;
+  height: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.sonar-core {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--accent-emerald);
+  box-shadow: 0 0 8px var(--accent-emerald);
+}
+
+.sonar-ring {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  border: 1.5px solid var(--accent-emerald);
+  animation: sonarWave 1.8s infinite ease-out;
+}
+
+@keyframes sonarWave {
+  0% { transform: scale(0.6); opacity: 1; }
+  100% { transform: scale(1.6); opacity: 0; }
+}
+
+.active-tab-meta {
+  flex: 1;
+  min-width: 0;
+}
+
+.active-tab-badge-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 2px;
+}
+
+.active-tab-pill {
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.5px;
+  color: var(--accent-emerald);
+}
+
+.active-tab-name {
+  font-size: 13px;
+  font-weight: 800;
+  color: #fff;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.active-tab-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.btn-active-action {
+  padding: 4px 10px;
+  font-size: 10px;
+  font-weight: 700;
+  border-radius: 5px;
+  border: 1px solid rgba(16, 185, 129, 0.4);
+  background: rgba(16, 185, 129, 0.15);
+  color: #fff;
+  cursor: pointer;
+  text-decoration: none;
+  transition: all 0.2s;
+}
+
+.btn-active-action:hover {
+  background: rgba(16, 185, 129, 0.3);
+  box-shadow: 0 0 10px rgba(16, 185, 129, 0.4);
+}
+
+.btn-active-action.primary {
+  background: var(--accent-emerald);
+  color: #070b14;
+}
+
+.btn-active-action.primary:hover {
+  background: #34d399;
+}
+
+.active-tab-domains {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: #94a3b8;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.active-tab-domains code {
+  background: rgba(0, 0, 0, 0.35);
+  padding: 1px 6px;
+  border-radius: 4px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+/* ==========================================================================
+   Bookmark & Private Recon Notes
+   ========================================================================== */
+.card-tools {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: auto;
+}
+
+.tool-btn {
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--text-dim);
+  font-size: 13px;
+  cursor: pointer;
+  padding: 3px 6px;
+  border-radius: 4px;
+  transition: all 0.15s ease;
+}
+
+.tool-btn:hover {
+  color: #fff;
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.12);
+}
+
+.tool-btn.is-bookmarked {
+  color: #fbbf24 !important;
+  text-shadow: 0 0 8px rgba(251, 191, 36, 0.5);
+}
+
+.tool-btn.has-notes {
+  color: var(--accent-cyan) !important;
+}
+
+.notes-drawer {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px dashed rgba(255, 255, 255, 0.1);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.notes-drawer.hidden {
+  display: none !important;
+}
+
+.notes-textarea {
+  width: 100%;
+  min-height: 52px;
+  background: rgba(7, 11, 20, 0.75);
+  border: 1px solid var(--border-active);
+  border-radius: 6px;
+  color: var(--text-main);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  padding: 6px 8px;
+  resize: vertical;
+}
+
+.notes-textarea:focus {
+  outline: none;
+  border-color: var(--accent-cyan);
+  box-shadow: 0 0 8px rgba(56, 189, 248, 0.3);
+}
+
+.notes-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
+.btn-note-action {
+  font-size: 10px;
+  padding: 3px 9px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: 600;
+  border: none;
+}
+
+.btn-note-save {
+  background: var(--accent-cyan);
+  color: #070b14;
+}
+
+.btn-note-save:hover {
+  background: #7dd3fc;
+}
+
+.btn-note-delete {
+  background: rgba(244, 63, 94, 0.18);
+  color: #f43f5e;
+  border: 1px solid rgba(244, 63, 94, 0.3);
+}
+
+.btn-note-delete:hover {
+  background: rgba(244, 63, 94, 0.3);
+}
+
+.btn-note-cancel {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text-muted);
+}
+
+.btn-note-cancel:hover {
+  background: rgba(255, 255, 255, 0.15);
+  color: #fff;
+}
+
+.display-saved-note {
+  font-size: 10.5px;
+  font-family: var(--font-mono);
+  background: rgba(56, 189, 248, 0.08);
+  border-left: 2px solid var(--accent-cyan);
+  padding: 5px 8px;
+  border-radius: 0 4px 4px 0;
+  color: #bae6fd;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
