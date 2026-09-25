@@ -1,0 +1,32 @@
+{
+  "manifest_version": 3,
+  "name": "BountyRadar - Fresh Bounty & VDP Hunter",
+  "version": "1.0.0",
+  "description": "Autonomously discovers newly published, self-hosted, and unlisted bug bounty programs without having to visit websites.",
+  "permissions": ["storage", "alarms", "notifications"],
+  "host_permissions": ["https://raw.githubusercontent.com/*"],
+  "background": {
+    "service_worker": "background.js",
+    "scripts": ["feeds.js", "background.js"]
+  },
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "BountyRadar",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    }
+  },
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "bountyradar@local.dev",
+      "strict_min_version": "109.0"
+    }
+  },
+  "icons": {
+    "16": "icons/icon16.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  }
+}

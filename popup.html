@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>BountyRadar - Fresh Bug Bounty Hunter</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <!-- Header -->
+  <header class="app-header">
+    <div class="logo-group">
+      <div class="radar-ping">
+        <span class="ping-circle"></span>
+        <img src="icons/icon48.png" alt="BountyRadar" class="app-logo">
+      </div>
+      <div>
+        <h1 class="app-title">BountyRadar</h1>
+        <p class="app-subtitle" id="status-indicator">Autonomous Discovery Active</p>
+      </div>
+    </div>
+    <div class="header-actions">
+      <button id="sync-btn" class="btn btn-primary" title="Fetch latest feeds immediately">
+        <span class="btn-icon" id="sync-icon">🔄</span>
+        <span id="sync-text">Sync Feeds</span>
+      </button>
+      <button id="export-btn" class="btn btn-secondary" title="Export programs as JSON">
+        <span class="btn-icon">📥</span>
+        <span>Export</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- Metrics Bar -->
+  <section class="metrics-bar">
+    <div class="metric-card">
+      <span class="metric-value" id="stat-total">0</span>
+      <span class="metric-label">Total Programs</span>
+    </div>
+    <div class="metric-card">
+      <span class="metric-value" id="stat-selfhosted">0</span>
+      <span class="metric-label">Self-Hosted</span>
+    </div>
+    <div class="metric-card highlight-card">
+      <span class="metric-value" id="stat-fresh">0</span>
+      <span class="metric-label">Fresh Discovered</span>
+    </div>
+  </section>
+
+  <!-- Search & Filter Controls -->
+  <section class="control-panel">
+    <div class="search-box">
+      <span class="search-icon">🔍</span>
+      <input type="text" id="search-input" placeholder="Search programs, domains (*.corp.com), platforms..." autocomplete="off">
+      <button id="search-clear" class="btn-clear hidden">×</button>
+    </div>
+
+    <div class="filter-tabs">
+      <button class="tab-btn active" data-filter="all">All</button>
+      <button class="tab-btn" data-filter="fresh">🔥 Fresh / New</button>
+      <button class="tab-btn" data-filter="selfhosted">🌐 Self-Hosted</button>
+      <button class="tab-btn" data-filter="bounty">💰 Cash Bounties</button>
+      <button class="tab-btn" data-filter="vdp">🛡️ VDP Only</button>
+    </div>
+  </section>
+
+  <!-- Content List -->
+  <main class="content-area">
+    <div id="loading-state" class="state-box hidden">
+      <div class="spinner"></div>
+      <p>Synchronizing global bounty feeds...</p>
+    </div>
+
+    <div id="empty-state" class="state-box hidden">
+      <div class="empty-emoji">🎯</div>
+      <p id="empty-title"><strong>No programs found</strong></p>
+      <p id="empty-desc">Try clearing the search query or changing filters.</p>
+    </div>
+
+    <div id="program-list" class="program-list"></div>
+  </main>
+
+  <!-- Footer -->
+  <footer class="app-footer">
+    <div class="footer-left">
+      <span id="last-sync-label">Last synced: checking…</span>
+    </div>
+    <div class="footer-right">
+      <button id="mark-read-btn" class="text-link" title="Clear all new badges">Mark New as Read</button>
+    </div>
+  </footer>
+
+  <script src="popup.js"></script>
+</body>
+</html>

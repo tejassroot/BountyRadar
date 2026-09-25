@@ -1,0 +1,5 @@
+# Build and temporary artifacts
+web-ext-artifacts/
+node_modules/
+.DS_Store
+*.log
