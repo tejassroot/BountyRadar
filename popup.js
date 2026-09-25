@@ -1,6 +1,7 @@
 /**
- * BountyRadar Popup Controller
- * Manages state, instant multi-word filtering, common word tags, and zero-click auto-syncing.
+ * BountyRadar Ultra-Pro Controller
+ * Manages reactive state, bento card interactions, smart keyword filtering,
+ * one-click scope copying, and zero-click autonomous background sync.
  */
 
 const state = {
@@ -12,26 +13,42 @@ const state = {
   searchQuery: ""
 };
 
-// Elements
+// UI Elements
 const programListEl = document.getElementById("program-list");
 const loadingEl = document.getElementById("loading-state");
 const emptyEl = document.getElementById("empty-state");
 const emptyTitleEl = document.getElementById("empty-title");
 const searchInput = document.getElementById("search-input");
 const searchClearBtn = document.getElementById("search-clear");
+const resultsCountPill = document.getElementById("results-count-pill");
 const filterTabs = document.querySelectorAll(".tab-btn");
 const chipsBtns = document.querySelectorAll(".chip-btn");
+const metricCards = document.querySelectorAll(".metric-card");
 const syncBtn = document.getElementById("sync-btn");
 const syncIcon = document.getElementById("sync-icon");
 const syncText = document.getElementById("sync-text");
 const exportBtn = document.getElementById("export-btn");
 const markReadBtn = document.getElementById("mark-read-btn");
 const lastSyncLabel = document.getElementById("last-sync-label");
+const toastEl = document.getElementById("toast-notify");
+const toastMsg = document.getElementById("toast-msg");
+const toastIcon = document.getElementById("toast-icon");
 
 const statTotalEl = document.getElementById("stat-total");
 const statFreshEl = document.getElementById("stat-fresh");
 const statSelfHostedEl = document.getElementById("stat-selfhosted");
 const statPrivateEl = document.getElementById("stat-private");
+
+let toastTimer = null;
+function showToast(message, icon = "✓") {
+  if (toastTimer) clearTimeout(toastTimer);
+  toastMsg.textContent = message;
+  toastIcon.textContent = icon;
+  toastEl.classList.remove("hidden");
+  toastTimer = setTimeout(() => {
+    toastEl.classList.add("hidden");
+  }, 2200);
+}
 
 function timeAgo(timestamp) {
   if (!timestamp) return "Never";
@@ -78,7 +95,7 @@ function matchesSearch(p, query) {
 
   const domainsStr = Array.isArray(p.domains) ? p.domains.join(" ") : "";
   const tagsStr = Array.isArray(p.tags) ? p.tags.join(" ") : "";
-  const corpus = `${p.name || ""} ${p.url || ""} ${p.platform || ""} ${domainsStr} ${tagsStr} ${p.isPrivate ? "private nda unlisted" : ""} ${p.isSelfHosted ? "self-hosted selfhosted independent" : ""} ${p.hasBounty ? "bounty cash paid money reward" : "vdp hall of fame hof free"} ${p.isNew ? "new fresh" : ""}`.toLowerCase();
+  const corpus = `${p.name || ""} ${p.url || ""} ${p.platform || ""} ${domainsStr} ${tagsStr} ${p.isPrivate ? "private nda unlisted" : ""} ${p.isSelfHosted ? "self-hosted selfhosted independent" : ""} ${p.hasBounty ? "bounty cash paid reward money" : "vdp hall of fame hof free"} ${p.isNew ? "new fresh" : ""}`.toLowerCase();
 
   return terms.every((term) => {
     if (term === "bc") return corpus.includes("bugcrowd");
@@ -98,6 +115,10 @@ function renderList() {
 
   const filtered = state.programs.filter((p) => matchesFilter(p) && matchesSearch(p, q));
 
+  if (resultsCountPill) {
+    resultsCountPill.textContent = `${filtered.length.toLocaleString()} targets`;
+  }
+
   if (state.isSyncing && state.programs.length === 0) {
     loadingEl.classList.remove("hidden");
     emptyEl.classList.add("hidden");
@@ -110,7 +131,7 @@ function renderList() {
     if (q) {
       emptyTitleEl.textContent = `No programs match "${state.searchQuery}"`;
     } else if (state.activeFilter === "fresh") {
-      emptyTitleEl.textContent = "No new programs discovered yet";
+      emptyTitleEl.textContent = "No fresh programs discovered yet";
     } else {
       emptyTitleEl.textContent = "No programs in this category";
     }
@@ -118,16 +139,15 @@ function renderList() {
   }
   emptyEl.classList.add("hidden");
 
-  // Virtual slice: render up to 100 for instant UI responsiveness
-  const displaySlice = filtered.slice(0, 100);
-
+  // Virtual slice: render up to 120 for instant 60fps responsiveness
+  const displaySlice = filtered.slice(0, 120);
   const fragment = document.createDocumentFragment();
 
   for (const prog of displaySlice) {
     const card = document.createElement("div");
     card.className = `program-card ${prog.isNew ? "is-new-card" : ""}`;
 
-    // Top row
+    // Top Row
     const top = document.createElement("div");
     top.className = "card-top";
 
@@ -138,6 +158,7 @@ function renderList() {
     img.className = "card-favicon";
     img.src = prog.favicon || "icons/icon16.png";
     img.alt = "";
+    img.loading = "lazy";
     img.addEventListener("error", () => {
       img.src = "icons/icon16.png";
     });
@@ -148,6 +169,7 @@ function renderList() {
     link.target = "_blank";
     link.rel = "noopener noreferrer";
     link.textContent = prog.name;
+    link.title = `Open ${prog.name} program policy`;
 
     ident.appendChild(img);
     ident.appendChild(link);
@@ -187,12 +209,32 @@ function renderList() {
     top.appendChild(badges);
     card.appendChild(top);
 
-    // Domains preview if available
+    // Domains Scope Preview with 1-Click Copy
     if (Array.isArray(prog.domains) && prog.domains.length > 0) {
-      const dom = document.createElement("div");
-      dom.className = "card-domains";
-      dom.textContent = `🎯 ${prog.domains.slice(0, 3).join(", ")}${prog.domains.length > 3 ? ` +${prog.domains.length - 3} more` : ""}`;
-      card.appendChild(dom);
+      const scopeRow = document.createElement("div");
+      scopeRow.className = "card-scope-row";
+
+      const domText = document.createElement("span");
+      domText.className = "card-domains-text";
+      domText.textContent = `🎯 ${prog.domains.slice(0, 3).join(", ")}${prog.domains.length > 3 ? ` +${prog.domains.length - 3} more` : ""}`;
+      domText.title = prog.domains.join("\n");
+
+      const copyBtn = document.createElement("button");
+      copyBtn.className = "btn-copy-scope";
+      copyBtn.textContent = "📋 Copy Scope";
+      copyBtn.title = "Copy in-scope domains to clipboard for recon tools";
+      copyBtn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        navigator.clipboard.writeText(prog.domains.join("\n")).then(() => {
+          showToast(`Copied ${prog.domains.length} targets!`, "📋");
+        }).catch(() => {
+          showToast("Failed to copy", "⚠️");
+        });
+      });
+
+      scopeRow.appendChild(domText);
+      scopeRow.appendChild(copyBtn);
+      card.appendChild(scopeRow);
     }
 
     // Footer
@@ -204,13 +246,13 @@ function renderList() {
     urlA.href = prog.url;
     urlA.target = "_blank";
     urlA.rel = "noopener noreferrer";
-    urlA.textContent = prog.url;
+    urlA.textContent = prog.url.replace(/^https?:\/\//, "");
     footer.appendChild(urlA);
 
     if (prog.maxReward) {
       const rew = document.createElement("span");
       rew.className = "card-reward";
-      rew.textContent = `Up to ${prog.maxReward}`;
+      rew.textContent = `Max: ${prog.maxReward}`;
       footer.appendChild(rew);
     }
 
@@ -225,18 +267,19 @@ async function triggerAutoSync() {
   if (state.isSyncing) return;
   state.isSyncing = true;
   if (syncIcon) syncIcon.classList.add("spinning");
-  if (syncText) syncText.textContent = "Auto-syncing…";
+  if (syncText) syncText.textContent = "Syncing…";
 
   try {
     const res = await chrome.runtime.sendMessage({ type: "BOUNTYRADAR_FORCE_SYNC" });
     if (res && res.ok) {
       if (syncText) syncText.textContent = "Synced!";
+      showToast(`Updated ${res.total || 3000}+ programs`, "🔄");
       setTimeout(() => {
-        if (syncText) syncText.textContent = "Sync Feeds";
+        if (syncText) syncText.textContent = "Sync";
       }, 1500);
     }
   } catch (_) {
-    if (syncText) syncText.textContent = "Sync Feeds";
+    if (syncText) syncText.textContent = "Sync";
   } finally {
     state.isSyncing = false;
     if (syncIcon) syncIcon.classList.remove("spinning");
@@ -263,7 +306,7 @@ async function refreshState() {
       updateMetrics();
       renderList();
 
-      // AUTOMATIC ZERO-CLICK SYNC: If storage is empty or stale (> 2 hours), auto-sync immediately!
+      // AUTOMATIC ZERO-CLICK SYNC: If storage is empty or older than 2 hours, auto-sync immediately!
       const isStale = !state.lastSync || (Date.now() - state.lastSync > 1000 * 60 * 120);
       if (!state.isSyncing && (state.programs.length === 0 || isStale)) {
         triggerAutoSync();
@@ -274,7 +317,7 @@ async function refreshState() {
   }
 }
 
-// Event Listeners
+// Search Inputs & Clear
 searchInput.addEventListener("input", (e) => {
   state.searchQuery = e.target.value;
   searchClearBtn.classList.toggle("hidden", state.searchQuery === "");
@@ -289,12 +332,29 @@ searchClearBtn.addEventListener("click", () => {
   searchInput.focus();
 });
 
+// Interactive Bento Metric Cards: Click to Filter
+metricCards.forEach((card) => {
+  card.addEventListener("click", () => {
+    const targetFilter = card.getAttribute("data-filter-target");
+    if (!targetFilter) return;
+
+    filterTabs.forEach((t) => {
+      t.classList.toggle("active", t.getAttribute("data-filter") === targetFilter);
+    });
+    state.activeFilter = targetFilter;
+    state.searchQuery = "";
+    searchInput.value = "";
+    searchClearBtn.classList.add("hidden");
+    renderList();
+  });
+});
+
+// Quick Tags / Chips
 chipsBtns.forEach((chip) => {
   chip.addEventListener("click", () => {
     const word = chip.getAttribute("data-word");
     if (!word) return;
 
-    // Check if matching a filter tab
     const matchedTab = Array.from(filterTabs).find((t) => t.getAttribute("data-filter") === word);
     if (matchedTab) {
       filterTabs.forEach((t) => t.classList.remove("active"));
@@ -312,6 +372,7 @@ chipsBtns.forEach((chip) => {
   });
 });
 
+// Filter Tabs
 filterTabs.forEach((tab) => {
   tab.addEventListener("click", () => {
     filterTabs.forEach((t) => t.classList.remove("active"));
@@ -321,15 +382,19 @@ filterTabs.forEach((tab) => {
   });
 });
 
-syncBtn.addEventListener("click", async () => {
+// Sync Button
+syncBtn.addEventListener("click", () => {
   triggerAutoSync();
 });
 
+// Mark Read Button
 markReadBtn.addEventListener("click", async () => {
   await chrome.runtime.sendMessage({ type: "BOUNTYRADAR_MARK_READ" });
+  showToast("All fresh badges cleared", "✓");
   await refreshState();
 });
 
+// Export JSON
 exportBtn.addEventListener("click", () => {
   const q = state.searchQuery.trim().toLowerCase();
   const exportData = state.programs.filter((p) => matchesFilter(p) && matchesSearch(p, q));
@@ -341,7 +406,17 @@ exportBtn.addEventListener("click", () => {
   a.download = `bountyradar-${state.activeFilter}-${Date.now()}.json`;
   a.click();
   URL.revokeObjectURL(url);
+  showToast(`Exported ${exportData.length} programs!`, "📥");
 });
 
-// Initial load
+// Global Keyboard Shortcut: '/' to search
+window.addEventListener("keydown", (e) => {
+  if (e.key === "/" && document.activeElement !== searchInput) {
+    e.preventDefault();
+    searchInput.focus();
+    searchInput.select();
+  }
+});
+
+// Initial boot
 refreshState();

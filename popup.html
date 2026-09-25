@@ -2,66 +2,88 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>BountyRadar - Fresh Bug Bounty Hunter</title>
+  <title>BountyRadar - Autonomous Bug Bounty & VDP Radar</title>
   <link rel="stylesheet" href="popup.css">
 </head>
 <body>
+  <!-- Toast Notification -->
+  <div id="toast-notify" class="toast hidden">
+    <span id="toast-icon">✓</span>
+    <span id="toast-msg">Notification</span>
+  </div>
+
   <!-- Header -->
   <header class="app-header">
     <div class="logo-group">
-      <div class="radar-ping">
-        <span class="ping-circle"></span>
+      <div class="radar-beacon">
+        <div class="radar-sweep"></div>
+        <div class="radar-dot"></div>
         <img src="icons/icon48.png" alt="BountyRadar" class="app-logo">
       </div>
-      <div>
-        <h1 class="app-title">BountyRadar</h1>
-        <p class="app-subtitle" id="status-indicator">Autonomous Discovery Active</p>
+      <div class="title-meta">
+        <div class="title-row">
+          <h1 class="app-title">BountyRadar</h1>
+          <span class="version-badge">v1.1</span>
+        </div>
+        <div class="status-indicator">
+          <span class="live-dot"></span>
+          <span id="status-text">Autonomous Active • Live Feeds</span>
+        </div>
       </div>
     </div>
+
     <div class="header-actions">
-      <button id="sync-btn" class="btn btn-primary" title="Fetch latest feeds immediately">
-        <span class="btn-icon" id="sync-icon">🔄</span>
-        <span id="sync-text">Sync Feeds</span>
+      <button id="sync-btn" class="action-btn primary-action" title="Fetch latest global feeds">
+        <svg class="action-svg" id="sync-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/>
+        </svg>
+        <span id="sync-text">Sync</span>
       </button>
-      <button id="export-btn" class="btn btn-secondary" title="Export programs as JSON">
-        <span class="btn-icon">📥</span>
+      <button id="export-btn" class="action-btn secondary-action" title="Export programs as JSON">
+        <svg class="action-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/>
+        </svg>
         <span>Export</span>
       </button>
     </div>
   </header>
 
-  <!-- Metrics Bar -->
+  <!-- Bento Metrics Bar -->
   <section class="metrics-bar">
-    <div class="metric-card">
+    <div class="metric-card" data-filter-target="all" title="View all programs">
+      <span class="metric-label">Total Index</span>
       <span class="metric-value" id="stat-total">0</span>
-      <span class="metric-label">Total</span>
     </div>
-    <div class="metric-card highlight-card">
-      <span class="metric-value" id="stat-fresh">0</span>
+    <div class="metric-card card-fresh" data-filter-target="fresh" title="View fresh discoveries">
       <span class="metric-label">🔥 Fresh</span>
+      <span class="metric-value" id="stat-fresh">0</span>
     </div>
-    <div class="metric-card">
-      <span class="metric-value" id="stat-selfhosted">0</span>
+    <div class="metric-card card-selfhosted" data-filter-target="selfhosted" title="View self-hosted corporate programs">
       <span class="metric-label">🌐 Self-Hosted</span>
+      <span class="metric-value" id="stat-selfhosted">0</span>
     </div>
-    <div class="metric-card">
-      <span class="metric-value" id="stat-private">0</span>
+    <div class="metric-card card-private" data-filter-target="private" title="View private/NDA programs">
       <span class="metric-label">🔒 Private</span>
+      <span class="metric-value" id="stat-private">0</span>
     </div>
   </section>
 
   <!-- Search & Filter Controls -->
   <section class="control-panel">
-    <div class="search-box">
-      <span class="search-icon">🔍</span>
-      <input type="text" id="search-input" placeholder="Search by common words (e.g. bugcrowd api, private, crypto, *.target.com)..." autocomplete="off">
-      <button id="search-clear" class="btn-clear hidden">×</button>
+    <div class="search-container">
+      <svg class="search-glass-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <circle cx="11" cy="11" r="8"/>
+        <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+      </svg>
+      <input type="text" id="search-input" placeholder="Search by common words (e.g. bugcrowd api, private, crypto, *.target.com)..." autocomplete="off" spellcheck="false">
+      <span id="results-count-pill" class="results-pill">0</span>
+      <button id="search-clear" class="btn-clear hidden" title="Clear search">×</button>
     </div>
 
     <!-- Quick Common Words Chips -->
     <div class="common-chips-wrapper">
       <div class="common-chips-bar" id="chips-bar">
-        <span class="chips-title">Quick:</span>
+        <span class="chips-title">TAGS:</span>
         <button class="chip-btn" data-word="fresh">🔥 Fresh</button>
         <button class="chip-btn" data-word="private">🔒 Private/NDA</button>
         <button class="chip-btn" data-word="self-hosted">🌐 Self-Hosted</button>
@@ -76,29 +98,33 @@
       </div>
     </div>
 
-    <div class="filter-tabs">
-      <button class="tab-btn active" data-filter="all">All</button>
-      <button class="tab-btn" data-filter="fresh">🔥 Fresh</button>
-      <button class="tab-btn" data-filter="private">🔒 Private/NDA</button>
-      <button class="tab-btn" data-filter="selfhosted">🌐 Self-Hosted</button>
-      <button class="tab-btn" data-filter="bugcrowd">🐞 Bugcrowd</button>
-      <button class="tab-btn" data-filter="hackerone">🎯 HackerOne</button>
-      <button class="tab-btn" data-filter="bounty">💰 Bounty</button>
-      <button class="tab-btn" data-filter="vdp">🛡️ VDP</button>
+    <!-- Filter Tabs Slider -->
+    <div class="filter-tabs-wrapper">
+      <div class="filter-tabs">
+        <button class="tab-btn active" data-filter="all">All</button>
+        <button class="tab-btn" data-filter="fresh">🔥 Fresh</button>
+        <button class="tab-btn" data-filter="private">🔒 Private</button>
+        <button class="tab-btn" data-filter="selfhosted">🌐 Self-Hosted</button>
+        <button class="tab-btn" data-filter="bugcrowd">🐞 Bugcrowd</button>
+        <button class="tab-btn" data-filter="hackerone">🎯 HackerOne</button>
+        <button class="tab-btn" data-filter="bounty">💰 Bounty</button>
+        <button class="tab-btn" data-filter="vdp">🛡️ VDP</button>
+      </div>
     </div>
   </section>
 
   <!-- Content List -->
   <main class="content-area">
     <div id="loading-state" class="state-box hidden">
-      <div class="spinner"></div>
-      <p>Synchronizing global bounty feeds...</p>
+      <div class="cyber-spinner"></div>
+      <p class="state-heading">Synchronizing Global Bounty Feeds</p>
+      <p class="state-sub">Aggregating Disclose.io, HackerOne, Bugcrowd, ProjectDiscovery, Intigriti & YesWeHack...</p>
     </div>
 
     <div id="empty-state" class="state-box hidden">
-      <div class="empty-emoji">🎯</div>
-      <p id="empty-title"><strong>No programs found</strong></p>
-      <p id="empty-desc">Try clearing the search query or changing filters.</p>
+      <div class="empty-radar-icon">📡</div>
+      <p id="empty-title" class="state-heading">No programs found</p>
+      <p id="empty-desc" class="state-sub">Try clearing the search query or selecting a different category.</p>
     </div>
 
     <div id="program-list" class="program-list"></div>
@@ -107,10 +133,13 @@
   <!-- Footer -->
   <footer class="app-footer">
     <div class="footer-left">
+      <span class="sync-dot"></span>
       <span id="last-sync-label">Last synced: checking…</span>
     </div>
     <div class="footer-right">
-      <button id="mark-read-btn" class="text-link" title="Clear all new badges">Mark New as Read</button>
+      <button id="mark-read-btn" class="footer-action-link" title="Mark newly discovered programs as read">Mark Fresh as Read</button>
+      <span class="footer-divider">•</span>
+      <a href="https://github.com/tejassroot/BountyRadar" target="_blank" rel="noopener noreferrer" class="footer-github-link" title="View Source on GitHub">GitHub ↗</a>
     </div>
   </footer>
 
