@@ -6,6 +6,23 @@
 [![Manifest V3](https://img.shields.io/badge/Manifest-V3-success.svg)](manifest.json)
 [![Supported Browsers](https://img.shields.io/badge/Browsers-Chrome%20%7C%20Firefox%20%7C%20Brave%20%7C%20Edge-purple.svg)](https://github.com/tejassroot/BountyRadar)
 
+<p align="center">
+  <img src="assets/images/bountyradar-hero.jpg" alt="BountyRadar Hero Banner" width="100%" />
+</p>
+
+---
+
+## 📸 Interface & Live Radar Preview
+
+<p align="center">
+  <img src="assets/images/bountyradar-popup-ui.png" alt="BountyRadar Ultra-Pro Cyberpunk Bento UI" width="370" />
+  &nbsp;&nbsp;&nbsp;&nbsp;
+  <img src="assets/images/bountyradar-search-view.png" alt="BountyRadar Search & Quick Filter Chips" width="370" />
+</p>
+
+> **Left:** Cyberpunk Bento Grid with 5 reactive metric cards (**13,757+ Programs**, **39,642+ Targets**, **852+ Fresh**, **1,586+ Self-Hosted**, **224+ Private**), global regional radar, and 1-click scope copy.  
+> **Right:** Real-time scope search filtering across 30,000+ wildcard and target assets with instant keyword tags (`api`, `crypto`, `gov`, `mobile`).
+
 ---
 
 ## ⚡ How It Works (Without Visiting Sites)
@@ -103,6 +120,7 @@ BountyRadar/
 ├── popup.css           # Glassmorphic responsive dark stylesheet
 ├── popup.js            # Reactive state, token search & clipboard integration
 ├── icons/              # Extension brand assets (16px, 48px, 128px)
+├── assets/images/      # Interface preview screenshots and hero banner
 └── dist/               # Packaged production zip release
 ```
 
