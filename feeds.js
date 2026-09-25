@@ -20,15 +20,20 @@ function detectPlatform(url) {
 
 function normalizeUrl(url) {
   if (!url) return "";
+  let trimmed = String(url).trim();
+  if (!trimmed || trimmed === "#" || trimmed.toLowerCase() === "null" || trimmed.toLowerCase() === "undefined") return "";
+  if (!/^https?:\/\//i.test(trimmed)) {
+    trimmed = "https://" + trimmed;
+  }
   try {
-    const u = new URL(url);
+    const u = new URL(trimmed);
     u.hash = "";
     if (u.pathname.endsWith("/") && u.pathname.length > 1) {
       u.pathname = u.pathname.slice(0, -1);
     }
     return u.href;
   } catch (_) {
-    return url.trim();
+    return trimmed;
   }
 }
 
@@ -134,6 +139,22 @@ function formatOrgName(raw) {
   return raw.charAt(0).toUpperCase() + raw.slice(1);
 }
 
+function cleanDomain(raw) {
+  if (!raw || typeof raw !== "string") return null;
+  let s = raw.trim();
+  s = s.replace(/\[.*?\]\((.*?)\)/g, "$1");
+  s = s.replace(/\s*\(.*?\)\s*/g, "").trim();
+  s = s.replace(/^[a-z]+:\/\//i, "");
+  s = s.split("/")[0].split("?")[0].split("#")[0];
+  s = s.split(":")[0];
+  s = s.replace(/^\*\.?/, "");
+  s = s.replace(/\*+/g, "");
+  s = s.toLowerCase().trim();
+  if (!s.includes(".") || s.endsWith(".") || s.startsWith(".")) return null;
+  if (MULTI_PART_TLDS.has(s)) return null;
+  return s;
+}
+
 function detectCountry(url, domains = []) {
   try {
     const list = [url, ...(domains || [])];
@@ -221,12 +242,11 @@ async function fetchDiscloseIO() {
       if (normUrl) {
         try {
           const host = new URL(normUrl).hostname;
-          if (host) {
-            domains.push(host);
-            const rootObj = getRootDomainAndOrg(host);
-            if (rootObj && rootObj.root && rootObj.root !== host && !domains.includes(rootObj.root)) {
-              domains.push(rootObj.root);
-            }
+          const c = cleanDomain(host);
+          if (c && !domains.includes(c)) domains.push(c);
+          const rootObj = getRootDomainAndOrg(host);
+          if (rootObj && rootObj.root && !domains.includes(rootObj.root)) {
+            domains.push(rootObj.root);
           }
         } catch (_) {}
       }
@@ -281,8 +301,13 @@ async function fetchHackerOne() {
       const domains = [];
       if (p.targets && Array.isArray(p.targets.in_scope)) {
         for (const t of p.targets.in_scope) {
-          if (t.asset_identifier && !t.asset_identifier.includes(" ")) {
-            domains.push(t.asset_identifier);
+          const c = cleanDomain(t.asset_identifier);
+          if (c && !domains.includes(c)) {
+            domains.push(c);
+            const rootObj = getRootDomainAndOrg(c);
+            if (rootObj && rootObj.root && !domains.includes(rootObj.root)) {
+              domains.push(rootObj.root);
+            }
           }
         }
       }
@@ -335,7 +360,19 @@ async function fetchProjectDiscovery() {
       const isPrivate = (p.name || "").toLowerCase().includes("private") || normUrl.toLowerCase().includes("private");
       const hasBounty = Boolean(p.bounty);
       const hasSwag = Boolean(p.swag);
-      const domains = Array.isArray(p.domains) ? p.domains : [];
+      const domains = [];
+      if (Array.isArray(p.domains)) {
+        for (const d of p.domains) {
+          const c = cleanDomain(d);
+          if (c && !domains.includes(c)) {
+            domains.push(c);
+            const rootObj = getRootDomainAndOrg(c);
+            if (rootObj && rootObj.root && !domains.includes(rootObj.root)) {
+              domains.push(rootObj.root);
+            }
+          }
+        }
+      }
       const country = detectCountry(normUrl, domains);
       const tags = extractProgramTags(p.name, normUrl, plat, domains, {
         isSelfHosted: plat === "Self-Hosted",
@@ -379,7 +416,16 @@ async function fetchIntigriti() {
       const domains = [];
       if (p.targets && Array.isArray(p.targets.in_scope)) {
         for (const t of p.targets.in_scope) {
-          if (t.endpoint && t.endpoint !== "all") domains.push(t.endpoint);
+          if (t.endpoint && t.endpoint !== "all") {
+            const c = cleanDomain(t.endpoint);
+            if (c && !domains.includes(c)) {
+              domains.push(c);
+              const rootObj = getRootDomainAndOrg(c);
+              if (rootObj && rootObj.root && !domains.includes(rootObj.root)) {
+                domains.push(rootObj.root);
+              }
+            }
+          }
         }
       }
       const maxVal = p.max_bounty?.value;
@@ -428,8 +474,14 @@ async function fetchBugcrowd() {
       const domains = [];
       if (p.targets && Array.isArray(p.targets.in_scope)) {
         for (const t of p.targets.in_scope) {
-          if (t.target) domains.push(t.target);
-          else if (t.uri) domains.push(t.uri);
+          const c = cleanDomain(t.target) || cleanDomain(t.uri);
+          if (c && !domains.includes(c)) {
+            domains.push(c);
+            const rootObj = getRootDomainAndOrg(c);
+            if (rootObj && rootObj.root && !domains.includes(rootObj.root)) {
+              domains.push(rootObj.root);
+            }
+          }
         }
       }
       const hasBounty = typeof p.max_payout === "number" && p.max_payout > 0;
@@ -477,7 +529,14 @@ async function fetchYesWeHack() {
       const domains = [];
       if (p.targets && Array.isArray(p.targets.in_scope)) {
         for (const t of p.targets.in_scope) {
-          if (t.target && !t.target.includes(" ")) domains.push(t.target);
+          const c = cleanDomain(t.target);
+          if (c && !domains.includes(c)) {
+            domains.push(c);
+            const rootObj = getRootDomainAndOrg(c);
+            if (rootObj && rootObj.root && !domains.includes(rootObj.root)) {
+              domains.push(rootObj.root);
+            }
+          }
         }
       }
       const hasBounty = typeof p.max_bounty === "number" && p.max_bounty > 0;
@@ -560,18 +619,36 @@ async function fetchAllFeeds() {
     }
   }
 
-  // Index base programs by domains and hostnames
+  const PLATFORM_HOSTS = new Set([
+    "hackerone.com", "bugcrowd.com", "intigriti.com", "yeswehack.com",
+    "hackenproof.com", "bugbounty.ch", "openbugbounty.org", "federacy.com"
+  ]);
+
+  // Index base programs by cleaned domains, root domains, and self-hosted hostnames
   for (const p of map.values()) {
-    if (p.domains) {
+    if (Array.isArray(p.domains)) {
       for (const d of p.domains) {
-        const clean = d.replace(/^\*\.?/, "").toLowerCase();
-        domainIndex.set(clean, p);
+        const clean = cleanDomain(d);
+        if (clean) {
+          domainIndex.set(clean, p);
+          const rootObj = getRootDomainAndOrg(clean);
+          if (rootObj && rootObj.root && !domainIndex.has(rootObj.root)) {
+            domainIndex.set(rootObj.root, p);
+          }
+        }
       }
     }
-    if (p.url) {
+    // Only index program URL if it is self-hosted (NOT a multi-tenant platform)
+    if (p.url && (p.isSelfHosted || p.platform === "Self-Hosted")) {
       try {
         const host = new URL(p.url).hostname.replace(/^www\./, "").toLowerCase();
-        domainIndex.set(host, p);
+        if (host && !PLATFORM_HOSTS.has(host)) {
+          domainIndex.set(host, p);
+          const rootObj = getRootDomainAndOrg(host);
+          if (rootObj && rootObj.root && !domainIndex.has(rootObj.root)) {
+            domainIndex.set(rootObj.root, p);
+          }
+        }
       } catch (_) {}
     }
   }
@@ -582,7 +659,7 @@ async function fetchAllFeeds() {
     for (const w of wildcards) {
       const parsed = getRootDomainAndOrg(w);
       if (!parsed) continue;
-      const clean = w.replace(/^\*\.?/, "").toLowerCase();
+      const clean = cleanDomain(w) || w.replace(/^\*\.?/, "").toLowerCase();
 
       const matched = domainIndex.get(clean) || domainIndex.get(parsed.root);
       if (matched) {
@@ -604,6 +681,7 @@ async function fetchAllFeeds() {
             hasSwag: false,
             isPrivate: false,
             isWildcard: true,
+            isTargetAsset: true,
             country,
             tags: [country.code.toLowerCase(), country.name.toLowerCase(), "bounty", "wildcard", parsed.rawName],
             maxReward: null,
@@ -627,7 +705,7 @@ async function fetchAllFeeds() {
     for (const d of domains) {
       const parsed = getRootDomainAndOrg(d);
       if (!parsed) continue;
-      const clean = d.toLowerCase();
+      const clean = cleanDomain(d) || d.toLowerCase();
 
       const matched = domainIndex.get(clean) || domainIndex.get(parsed.root);
       if (matched) {
@@ -650,6 +728,7 @@ async function fetchAllFeeds() {
             hasSwag: false,
             isPrivate: false,
             isWildcard: false,
+            isTargetAsset: true,
             country,
             tags: [country.code.toLowerCase(), country.name.toLowerCase(), "bounty", parsed.rawName],
             maxReward: null,

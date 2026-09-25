@@ -217,6 +217,29 @@ function matchDomainAgainstPrograms(host, programs) {
   return null;
 }
 
+// Bulletproof Cross-Platform Link Opener for Chrome Extension Popups
+function openExternalUrl(url) {
+  if (!url || url === "#" || url.toLowerCase() === "null") {
+    showToast("No policy URL available for this target", "⚠️");
+    return;
+  }
+  let finalUrl = String(url).trim();
+  if (!/^https?:\/\//i.test(finalUrl)) {
+    finalUrl = "https://" + finalUrl;
+  }
+  try {
+    new URL(finalUrl);
+  } catch (_) {
+    showToast("Invalid URL destination", "⚠️");
+    return;
+  }
+  if (typeof chrome !== "undefined" && chrome.tabs && chrome.tabs.create) {
+    chrome.tabs.create({ url: finalUrl, active: true });
+  } else {
+    window.open(finalUrl, "_blank", "noopener,noreferrer");
+  }
+}
+
 function renderActiveTabBanner(host, prog) {
   if (!prog || !activeTabBanner) return;
   activeTabBanner.classList.remove("hidden");
@@ -224,8 +247,16 @@ function renderActiveTabBanner(host, prog) {
   activeTabReward.textContent = prog.hasBounty ? (prog.maxReward || "Bounty") : "VDP";
   activeTabReward.className = `badge ${prog.hasBounty ? "badge-bounty" : "badge-vdp"}`;
 
-  activeTabPolicyLink.href = prog.url;
+  activeTabPolicyLink.href = prog.url || "#";
   activeTabPolicyLink.title = `Open ${prog.name} rules & policy`;
+  activeTabPolicyLink.onclick = (e) => {
+    e.preventDefault();
+    if (prog.url) {
+      openExternalUrl(prog.url);
+    } else {
+      showToast("No policy URL found for active tab", "⚠️");
+    }
+  };
 
   activeTabDomains.replaceChildren();
   if (Array.isArray(prog.domains)) {
@@ -255,8 +286,22 @@ function renderUpdateBanner() {
     updateBanner.classList.remove("hidden");
     if (updateTitle) updateTitle.textContent = `🚀 Update v${state.updateInfo.newVersion} Available!`;
     if (updateDesc) updateDesc.textContent = `Current v${state.updateInfo.currentVersion} • Ready to download`;
-    if (updateDownloadBtn) updateDownloadBtn.href = state.updateInfo.zipUrl || "https://github.com/tejassroot/BountyRadar/releases";
-    if (updateReleaseBtn) updateReleaseBtn.href = state.updateInfo.downloadUrl || "https://github.com/tejassroot/BountyRadar/releases";
+    const zip = state.updateInfo.zipUrl || "https://github.com/tejassroot/BountyRadar/releases";
+    const rel = state.updateInfo.downloadUrl || "https://github.com/tejassroot/BountyRadar/releases";
+    if (updateDownloadBtn) {
+      updateDownloadBtn.href = zip;
+      updateDownloadBtn.onclick = (e) => {
+        e.preventDefault();
+        openExternalUrl(zip);
+      };
+    }
+    if (updateReleaseBtn) {
+      updateReleaseBtn.href = rel;
+      updateReleaseBtn.onclick = (e) => {
+        e.preventDefault();
+        openExternalUrl(rel);
+      };
+    }
   } else {
     updateBanner.classList.add("hidden");
   }
@@ -328,11 +373,16 @@ function renderList() {
 
     const link = document.createElement("a");
     link.className = "card-name";
-    link.href = prog.url;
+    link.href = prog.url || "#";
     link.target = "_blank";
     link.rel = "noopener noreferrer";
     link.textContent = prog.name;
-    link.title = `Open ${prog.name} program policy`;
+    link.title = prog.isTargetAsset ? `Open ${prog.name} asset website` : `Open ${prog.name} program policy`;
+    link.addEventListener("click", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      openExternalUrl(prog.url);
+    });
 
     ident.appendChild(img);
     ident.appendChild(link);
@@ -534,10 +584,16 @@ function renderList() {
 
     const urlA = document.createElement("a");
     urlA.className = "card-url-link";
-    urlA.href = prog.url;
+    urlA.href = prog.url || "#";
     urlA.target = "_blank";
     urlA.rel = "noopener noreferrer";
-    urlA.textContent = prog.url.replace(/^https?:\/\//, "");
+    urlA.textContent = (prog.url || "").replace(/^https?:\/\//, "");
+    urlA.title = prog.isTargetAsset ? `Asset Domain: ${prog.url}` : `Policy URL: ${prog.url}`;
+    urlA.addEventListener("click", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      openExternalUrl(prog.url);
+    });
     footer.appendChild(urlA);
 
     if (prog.maxReward) {
@@ -856,6 +912,15 @@ window.addEventListener("keydown", (e) => {
     searchInput.select();
   }
 });
+
+// GitHub Footer Link
+const ghFooterLink = document.querySelector(".footer-github-link");
+if (ghFooterLink) {
+  ghFooterLink.addEventListener("click", (e) => {
+    e.preventDefault();
+    openExternalUrl("https://github.com/tejassroot/BountyRadar");
+  });
+}
 
 // Initial boot
 refreshState();
