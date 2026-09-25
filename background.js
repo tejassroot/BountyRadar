@@ -186,9 +186,9 @@ chrome.runtime.onInstalled.addListener(() => {
 });
 
 chrome.runtime.onStartup.addListener(async () => {
-  const { lastSync, settings } = await getStorageData();
-  const intervalMs = (settings.syncIntervalMinutes || 360) * 60 * 1000;
-  if (Date.now() - lastSync > intervalMs) {
+  const { lastSync, programs } = await getStorageData();
+  const oneHour = 60 * 60 * 1000;
+  if (!lastSync || programs.length === 0 || Date.now() - lastSync > oneHour) {
     syncFeeds(true);
   }
 });

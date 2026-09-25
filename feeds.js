@@ -42,6 +42,28 @@ function getFavicon(url, size = 32) {
   }
 }
 
+function extractProgramTags(name, url, platform, domains, extra = {}) {
+  const tags = new Set();
+  const text = `${name || ""} ${url || ""} ${platform || ""} ${(domains || []).join(" ")} ${JSON.stringify(extra)}`.toLowerCase();
+
+  if (extra.isSelfHosted || platform === "Self-Hosted") tags.add("self-hosted");
+  if (extra.hasBounty) tags.add("bounty");
+  if (extra.hasSwag) tags.add("swag");
+  if (extra.isPrivate) tags.add("private");
+  if (extra.hasSafeHarbor) tags.add("safe-harbor");
+  if (extra.hasHallOfFame) tags.add("hall-of-fame");
+  if (extra.hasSecurityTxt) tags.add("security.txt");
+
+  if (text.includes("api") || text.includes("rest") || text.includes("graphql")) tags.add("api");
+  if (text.includes("crypto") || text.includes("web3") || text.includes("token") || text.includes("blockchain") || text.includes("contract") || text.includes("wallet")) tags.add("crypto");
+  if (text.includes("mobile") || text.includes("android") || text.includes("ios") || text.includes("apk")) tags.add("mobile");
+  if (text.includes("cloud") || text.includes("aws") || text.includes("azure") || text.includes("gcp")) tags.add("cloud");
+  if (text.includes("finance") || text.includes("bank") || text.includes("pay") || text.includes("fintech")) tags.add("fintech");
+  if (text.includes("shop") || text.includes("store") || text.includes("ecommerce") || text.includes("retail")) tags.add("ecommerce");
+
+  return Array.from(tags);
+}
+
 const FEED_SOURCES = {
   diodb: "https://raw.githubusercontent.com/disclose/diodb/master/program-list.json",
   hackerone: "https://raw.githubusercontent.com/arkadiyt/bounty-targets-data/master/data/hackerone_data.json",
@@ -62,6 +84,13 @@ async function fetchDiscloseIO() {
       const normUrl = normalizeUrl(p.policy_url);
       const plat = detectPlatform(normUrl);
       const offersBounty = String(p.offers_bounty || "").toLowerCase() === "yes" || p.offers_bounty === true;
+      const pd = String(p.public_disclosure || "").toLowerCase();
+      const isPrivate = pd === "nda" || pd === "no" || pd === "discretionary" ||
+        (p.program_name || "").toLowerCase().includes("private") ||
+        (normUrl || "").toLowerCase().includes("private");
+      const hasSafeHarbor = ["full", "partial", "yes"].includes(String(p.safe_harbor || "").toLowerCase());
+      const hasHallOfFame = Boolean(p.hall_of_fame);
+      const hasSecurityTxt = Boolean(p.securitytxt_url);
       const domains = [];
       if (normUrl) {
         try {
@@ -69,6 +98,16 @@ async function fetchDiscloseIO() {
           if (host) domains.push(host);
         } catch (_) {}
       }
+
+      const tags = extractProgramTags(p.program_name, normUrl, plat, domains, {
+        isSelfHosted: plat === "Self-Hosted",
+        hasBounty: offersBounty,
+        hasSwag: Boolean(p.offers_swag),
+        isPrivate,
+        hasSafeHarbor,
+        hasHallOfFame,
+        hasSecurityTxt
+      });
 
       return {
         id: normUrl || p.program_name,
@@ -78,6 +117,11 @@ async function fetchDiscloseIO() {
         isSelfHosted: plat === "Self-Hosted",
         hasBounty: offersBounty,
         hasSwag: Boolean(p.offers_swag),
+        isPrivate,
+        hasSafeHarbor,
+        hasHallOfFame,
+        hasSecurityTxt,
+        tags,
         maxReward: null,
         domains,
         favicon: getFavicon(normUrl)
@@ -107,6 +151,17 @@ async function fetchHackerOne() {
           }
         }
       }
+      const isPrivate = (p.name || "").toLowerCase().includes("private") ||
+        (handle || "").toLowerCase().includes("private") ||
+        normUrl.toLowerCase().includes("private");
+      const hasBounty = Boolean(p.offers_bounties);
+      const hasSwag = Boolean(p.offers_swag);
+      const tags = extractProgramTags(p.name || handle, normUrl, "HackerOne", domains, {
+        isSelfHosted: false,
+        hasBounty,
+        hasSwag,
+        isPrivate
+      });
 
       return {
         id: normUrl || p.name,
@@ -114,8 +169,10 @@ async function fetchHackerOne() {
         url: normUrl,
         platform: "HackerOne",
         isSelfHosted: false,
-        hasBounty: Boolean(p.offers_bounties),
-        hasSwag: Boolean(p.offers_swag),
+        hasBounty,
+        hasSwag,
+        isPrivate,
+        tags,
         maxReward: null,
         domains: domains.slice(0, 10),
         favicon: getFavicon(normUrl)
@@ -137,16 +194,29 @@ async function fetchProjectDiscovery() {
     return list.map((p) => {
       const normUrl = normalizeUrl(p.url);
       const plat = detectPlatform(normUrl);
+      const isPrivate = (p.name || "").toLowerCase().includes("private") || normUrl.toLowerCase().includes("private");
+      const hasBounty = Boolean(p.bounty);
+      const hasSwag = Boolean(p.swag);
+      const domains = Array.isArray(p.domains) ? p.domains : [];
+      const tags = extractProgramTags(p.name, normUrl, plat, domains, {
+        isSelfHosted: plat === "Self-Hosted",
+        hasBounty,
+        hasSwag,
+        isPrivate
+      });
+
       return {
         id: normUrl || p.name,
         name: p.name || "Unknown Program",
         url: normUrl,
         platform: plat,
         isSelfHosted: plat === "Self-Hosted",
-        hasBounty: Boolean(p.bounty),
-        hasSwag: Boolean(p.swag),
+        hasBounty,
+        hasSwag,
+        isPrivate,
+        tags,
         maxReward: null,
-        domains: Array.isArray(p.domains) ? p.domains : [],
+        domains,
         favicon: getFavicon(normUrl)
       };
     });
@@ -173,6 +243,14 @@ async function fetchIntigriti() {
       }
       const maxVal = p.max_bounty?.value;
       const hasBounty = typeof maxVal === "number" && maxVal > 0;
+      const isPrivate = (p.name || "").toLowerCase().includes("private") || normUrl.toLowerCase().includes("private");
+      const tags = extractProgramTags(p.name, normUrl, "Intigriti", domains, {
+        isSelfHosted: false,
+        hasBounty,
+        hasSwag: false,
+        isPrivate
+      });
+
       return {
         id: normUrl || p.name,
         name: p.name,
@@ -181,6 +259,8 @@ async function fetchIntigriti() {
         isSelfHosted: false,
         hasBounty,
         hasSwag: false,
+        isPrivate,
+        tags,
         maxReward: hasBounty ? `${maxVal} ${p.max_bounty?.currency || "EUR"}` : null,
         domains,
         favicon: getFavicon(normUrl)
@@ -209,6 +289,14 @@ async function fetchBugcrowd() {
         }
       }
       const hasBounty = typeof p.max_payout === "number" && p.max_payout > 0;
+      const isPrivate = (p.name || "").toLowerCase().includes("private") || normUrl.toLowerCase().includes("private");
+      const tags = extractProgramTags(p.name, normUrl, "Bugcrowd", domains, {
+        isSelfHosted: false,
+        hasBounty,
+        hasSwag: false,
+        isPrivate
+      });
+
       return {
         id: normUrl || p.name,
         name: p.name?.trim(),
@@ -217,6 +305,8 @@ async function fetchBugcrowd() {
         isSelfHosted: false,
         hasBounty,
         hasSwag: false,
+        isPrivate,
+        tags,
         maxReward: hasBounty ? `$${p.max_payout}` : null,
         domains,
         favicon: getFavicon(normUrl)
@@ -244,6 +334,15 @@ async function fetchYesWeHack() {
         }
       }
       const hasBounty = typeof p.max_bounty === "number" && p.max_bounty > 0;
+      const hasSwag = false;
+      const isPrivate = (p.name || "").toLowerCase().includes("private") || normUrl.toLowerCase().includes("private");
+      const tags = extractProgramTags(p.name, normUrl, "YesWeHack", domains, {
+        isSelfHosted: false,
+        hasBounty,
+        hasSwag,
+        isPrivate
+      });
+
       return {
         id: normUrl || p.name,
         name: p.name,
@@ -251,7 +350,9 @@ async function fetchYesWeHack() {
         platform: "YesWeHack",
         isSelfHosted: false,
         hasBounty,
-        hasSwag: false,
+        hasSwag,
+        isPrivate,
+        tags,
         maxReward: hasBounty ? `€${p.max_bounty}` : null,
         domains,
         favicon: getFavicon(normUrl)
@@ -283,10 +384,16 @@ async function fetchAllFeeds() {
         if (!map.has(key)) {
           map.set(key, item);
         } else {
-          // Merge details if already present
           const existing = map.get(key);
           if (!existing.maxReward && item.maxReward) existing.maxReward = item.maxReward;
           if (!existing.hasBounty && item.hasBounty) existing.hasBounty = true;
+          if (item.isPrivate) existing.isPrivate = true;
+          if (item.hasSafeHarbor) existing.hasSafeHarbor = true;
+          if (item.hasHallOfFame) existing.hasHallOfFame = true;
+          if (item.hasSecurityTxt) existing.hasSecurityTxt = true;
+          if (Array.isArray(item.tags) && Array.isArray(existing.tags)) {
+            existing.tags = Array.from(new Set([...existing.tags, ...item.tags]));
+          }
           if (item.domains && item.domains.length > existing.domains.length) {
             existing.domains = item.domains;
           }

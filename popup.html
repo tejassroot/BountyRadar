@@ -34,15 +34,19 @@
   <section class="metrics-bar">
     <div class="metric-card">
       <span class="metric-value" id="stat-total">0</span>
-      <span class="metric-label">Total Programs</span>
-    </div>
-    <div class="metric-card">
-      <span class="metric-value" id="stat-selfhosted">0</span>
-      <span class="metric-label">Self-Hosted</span>
+      <span class="metric-label">Total</span>
     </div>
     <div class="metric-card highlight-card">
       <span class="metric-value" id="stat-fresh">0</span>
-      <span class="metric-label">Fresh Discovered</span>
+      <span class="metric-label">🔥 Fresh</span>
+    </div>
+    <div class="metric-card">
+      <span class="metric-value" id="stat-selfhosted">0</span>
+      <span class="metric-label">🌐 Self-Hosted</span>
+    </div>
+    <div class="metric-card">
+      <span class="metric-value" id="stat-private">0</span>
+      <span class="metric-label">🔒 Private</span>
     </div>
   </section>
 
@@ -50,16 +54,37 @@
   <section class="control-panel">
     <div class="search-box">
       <span class="search-icon">🔍</span>
-      <input type="text" id="search-input" placeholder="Search programs, domains (*.corp.com), platforms..." autocomplete="off">
+      <input type="text" id="search-input" placeholder="Search by common words (e.g. bugcrowd api, private, crypto, *.target.com)..." autocomplete="off">
       <button id="search-clear" class="btn-clear hidden">×</button>
+    </div>
+
+    <!-- Quick Common Words Chips -->
+    <div class="common-chips-wrapper">
+      <div class="common-chips-bar" id="chips-bar">
+        <span class="chips-title">Quick:</span>
+        <button class="chip-btn" data-word="fresh">🔥 Fresh</button>
+        <button class="chip-btn" data-word="private">🔒 Private/NDA</button>
+        <button class="chip-btn" data-word="self-hosted">🌐 Self-Hosted</button>
+        <button class="chip-btn" data-word="bugcrowd">🐞 Bugcrowd</button>
+        <button class="chip-btn" data-word="hackerone">🎯 HackerOne</button>
+        <button class="chip-btn" data-word="api">⚡ API</button>
+        <button class="chip-btn" data-word="crypto">💳 Crypto</button>
+        <button class="chip-btn" data-word="mobile">📱 Mobile</button>
+        <button class="chip-btn" data-word="hall-of-fame">🏆 Hall of Fame</button>
+        <button class="chip-btn" data-word="security.txt">📜 security.txt</button>
+        <button class="chip-btn" data-word="safe-harbor">🛡️ Safe Harbor</button>
+      </div>
     </div>
 
     <div class="filter-tabs">
       <button class="tab-btn active" data-filter="all">All</button>
-      <button class="tab-btn" data-filter="fresh">🔥 Fresh / New</button>
+      <button class="tab-btn" data-filter="fresh">🔥 Fresh</button>
+      <button class="tab-btn" data-filter="private">🔒 Private/NDA</button>
       <button class="tab-btn" data-filter="selfhosted">🌐 Self-Hosted</button>
-      <button class="tab-btn" data-filter="bounty">💰 Cash Bounties</button>
-      <button class="tab-btn" data-filter="vdp">🛡️ VDP Only</button>
+      <button class="tab-btn" data-filter="bugcrowd">🐞 Bugcrowd</button>
+      <button class="tab-btn" data-filter="hackerone">🎯 HackerOne</button>
+      <button class="tab-btn" data-filter="bounty">💰 Bounty</button>
+      <button class="tab-btn" data-filter="vdp">🛡️ VDP</button>
     </div>
   </section>
 

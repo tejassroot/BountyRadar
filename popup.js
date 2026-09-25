@@ -1,6 +1,6 @@
 /**
  * BountyRadar Popup Controller
- * Manages state, instant filtering, searching, and exporting.
+ * Manages state, instant multi-word filtering, common word tags, and zero-click auto-syncing.
  */
 
 const state = {
@@ -20,6 +20,7 @@ const emptyTitleEl = document.getElementById("empty-title");
 const searchInput = document.getElementById("search-input");
 const searchClearBtn = document.getElementById("search-clear");
 const filterTabs = document.querySelectorAll(".tab-btn");
+const chipsBtns = document.querySelectorAll(".chip-btn");
 const syncBtn = document.getElementById("sync-btn");
 const syncIcon = document.getElementById("sync-icon");
 const syncText = document.getElementById("sync-text");
@@ -28,8 +29,9 @@ const markReadBtn = document.getElementById("mark-read-btn");
 const lastSyncLabel = document.getElementById("last-sync-label");
 
 const statTotalEl = document.getElementById("stat-total");
-const statSelfHostedEl = document.getElementById("stat-selfhosted");
 const statFreshEl = document.getElementById("stat-fresh");
+const statSelfHostedEl = document.getElementById("stat-selfhosted");
+const statPrivateEl = document.getElementById("stat-private");
 
 function timeAgo(timestamp) {
   if (!timestamp) return "Never";
@@ -45,32 +47,49 @@ function timeAgo(timestamp) {
 
 function updateMetrics() {
   statTotalEl.textContent = state.programs.length.toLocaleString();
-  const selfHostedCount = state.programs.filter((p) => p.isSelfHosted).length;
-  statSelfHostedEl.textContent = selfHostedCount.toLocaleString();
 
   const freshCount = state.programs.filter((p) => p.isNew).length;
   statFreshEl.textContent = freshCount.toLocaleString();
+
+  const selfHostedCount = state.programs.filter((p) => p.isSelfHosted).length;
+  statSelfHostedEl.textContent = selfHostedCount.toLocaleString();
+
+  const privateCount = state.programs.filter((p) => p.isPrivate).length;
+  if (statPrivateEl) statPrivateEl.textContent = privateCount.toLocaleString();
 
   lastSyncLabel.textContent = `Last synced: ${timeAgo(state.lastSync)}`;
 }
 
 function matchesFilter(p) {
   if (state.activeFilter === "fresh") return p.isNew;
+  if (state.activeFilter === "private") return p.isPrivate;
   if (state.activeFilter === "selfhosted") return p.isSelfHosted;
+  if (state.activeFilter === "bugcrowd") return p.platform === "Bugcrowd";
+  if (state.activeFilter === "hackerone") return p.platform === "HackerOne";
   if (state.activeFilter === "bounty") return p.hasBounty;
   if (state.activeFilter === "vdp") return !p.hasBounty;
   return true;
 }
 
-function matchesSearch(p, q) {
-  if (!q) return true;
-  if (p.name.toLowerCase().includes(q)) return true;
-  if (p.url.toLowerCase().includes(q)) return true;
-  if (p.platform.toLowerCase().includes(q)) return true;
-  if (Array.isArray(p.domains)) {
-    return p.domains.some((d) => d.toLowerCase().includes(q));
-  }
-  return false;
+function matchesSearch(p, query) {
+  if (!query) return true;
+  const terms = query.toLowerCase().split(/\s+/).filter(Boolean);
+  if (terms.length === 0) return true;
+
+  const domainsStr = Array.isArray(p.domains) ? p.domains.join(" ") : "";
+  const tagsStr = Array.isArray(p.tags) ? p.tags.join(" ") : "";
+  const corpus = `${p.name || ""} ${p.url || ""} ${p.platform || ""} ${domainsStr} ${tagsStr} ${p.isPrivate ? "private nda unlisted" : ""} ${p.isSelfHosted ? "self-hosted selfhosted independent" : ""} ${p.hasBounty ? "bounty cash paid money reward" : "vdp hall of fame hof free"} ${p.isNew ? "new fresh" : ""}`.toLowerCase();
+
+  return terms.every((term) => {
+    if (term === "bc") return corpus.includes("bugcrowd");
+    if (term === "h1") return corpus.includes("hackerone");
+    if (term === "ywh") return corpus.includes("yeswehack");
+    if (term === "hof") return corpus.includes("hall of fame") || corpus.includes("hall-of-fame") || corpus.includes("hof");
+    if (term === "fresh") return p.isNew || corpus.includes("fresh") || corpus.includes("new");
+    if (term === "private") return p.isPrivate || corpus.includes("private") || corpus.includes("nda");
+    if (term === "self-hosted" || term === "selfhosted") return p.isSelfHosted || corpus.includes("self-hosted");
+    return corpus.includes(term);
+  });
 }
 
 function renderList() {
@@ -143,8 +162,19 @@ function renderList() {
       badges.appendChild(newBadge);
     }
 
+    if (prog.isPrivate) {
+      const privBadge = document.createElement("span");
+      privBadge.className = "badge badge-private";
+      privBadge.textContent = "🔒 Private";
+      badges.appendChild(privBadge);
+    }
+
     const platBadge = document.createElement("span");
-    platBadge.className = `badge ${prog.isSelfHosted ? "badge-selfhosted" : "badge-platform"}`;
+    let platClass = "badge-platform";
+    if (prog.isSelfHosted) platClass = "badge-selfhosted";
+    else if (prog.platform === "Bugcrowd") platClass = "badge-bugcrowd";
+    else if (prog.platform === "HackerOne") platClass = "badge-hackerone";
+    platBadge.className = `badge ${platClass}`;
     platBadge.textContent = prog.platform;
     badges.appendChild(platBadge);
 
@@ -191,6 +221,36 @@ function renderList() {
   programListEl.appendChild(fragment);
 }
 
+async function triggerAutoSync() {
+  if (state.isSyncing) return;
+  state.isSyncing = true;
+  if (syncIcon) syncIcon.classList.add("spinning");
+  if (syncText) syncText.textContent = "Auto-syncing…";
+
+  try {
+    const res = await chrome.runtime.sendMessage({ type: "BOUNTYRADAR_FORCE_SYNC" });
+    if (res && res.ok) {
+      if (syncText) syncText.textContent = "Synced!";
+      setTimeout(() => {
+        if (syncText) syncText.textContent = "Sync Feeds";
+      }, 1500);
+    }
+  } catch (_) {
+    if (syncText) syncText.textContent = "Sync Feeds";
+  } finally {
+    state.isSyncing = false;
+    if (syncIcon) syncIcon.classList.remove("spinning");
+    const updated = await chrome.runtime.sendMessage({ type: "BOUNTYRADAR_GET_STATE" });
+    if (updated && updated.ok) {
+      state.programs = updated.programs || [];
+      state.lastSync = updated.lastSync || 0;
+      state.newCount = updated.newCount || 0;
+      updateMetrics();
+      renderList();
+    }
+  }
+}
+
 async function refreshState() {
   try {
     const res = await chrome.runtime.sendMessage({ type: "BOUNTYRADAR_GET_STATE" });
@@ -202,6 +262,12 @@ async function refreshState() {
 
       updateMetrics();
       renderList();
+
+      // AUTOMATIC ZERO-CLICK SYNC: If storage is empty or stale (> 2 hours), auto-sync immediately!
+      const isStale = !state.lastSync || (Date.now() - state.lastSync > 1000 * 60 * 120);
+      if (!state.isSyncing && (state.programs.length === 0 || isStale)) {
+        triggerAutoSync();
+      }
     }
   } catch (err) {
     console.debug("Background communication error:", err);
@@ -223,6 +289,29 @@ searchClearBtn.addEventListener("click", () => {
   searchInput.focus();
 });
 
+chipsBtns.forEach((chip) => {
+  chip.addEventListener("click", () => {
+    const word = chip.getAttribute("data-word");
+    if (!word) return;
+
+    // Check if matching a filter tab
+    const matchedTab = Array.from(filterTabs).find((t) => t.getAttribute("data-filter") === word);
+    if (matchedTab) {
+      filterTabs.forEach((t) => t.classList.remove("active"));
+      matchedTab.classList.add("active");
+      state.activeFilter = word;
+      state.searchQuery = "";
+      searchInput.value = "";
+      searchClearBtn.classList.add("hidden");
+    } else {
+      searchInput.value = word;
+      state.searchQuery = word;
+      searchClearBtn.classList.remove("hidden");
+    }
+    renderList();
+  });
+});
+
 filterTabs.forEach((tab) => {
   tab.addEventListener("click", () => {
     filterTabs.forEach((t) => t.classList.remove("active"));
@@ -233,26 +322,7 @@ filterTabs.forEach((tab) => {
 });
 
 syncBtn.addEventListener("click", async () => {
-  if (state.isSyncing) return;
-  state.isSyncing = true;
-  syncIcon.classList.add("spinning");
-  syncText.textContent = "Syncing…";
-
-  try {
-    const res = await chrome.runtime.sendMessage({ type: "BOUNTYRADAR_FORCE_SYNC" });
-    if (res && res.ok) {
-      syncText.textContent = "Synced!";
-      setTimeout(() => {
-        syncText.textContent = "Sync Feeds";
-      }, 1500);
-    }
-  } catch (err) {
-    syncText.textContent = "Failed";
-  } finally {
-    state.isSyncing = false;
-    syncIcon.classList.remove("spinning");
-    await refreshState();
-  }
+  triggerAutoSync();
 });
 
 markReadBtn.addEventListener("click", async () => {
