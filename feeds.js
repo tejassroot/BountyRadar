@@ -70,6 +70,70 @@ const TLD_COUNTRY_MAP = {
   eu: { code: "EU", flag: "🇪🇺", name: "European Union" }
 };
 
+const MULTI_PART_TLDS = new Set([
+  "com.br", "co.uk", "com.au", "co.in", "co.jp", "com.mx", "co.kr", "co.za",
+  "com.cn", "net.cn", "org.cn", "com.tw", "com.sv", "com.hr", "com.do", "co.br",
+  "com.kw", "com.qa", "com.sa", "com.bh", "com.sg", "com.my", "com.ar", "com.co",
+  "com.pe", "com.pk", "com.ng", "com.eg", "com.tr", "com.pl", "com.ua", "com.ro",
+  "gov.uk", "gov.br", "gov.in", "gov.au", "edu.au", "ac.uk", "org.uk", "net.au",
+  "co.nz", "com.nz", "org.nz", "govt.nz", "co.id", "com.ph", "co.th", "com.hk"
+]);
+
+const MULTI_PART_PREFIXES = new Set([
+  "co", "com", "net", "org", "gov", "gob", "edu", "ac", "biz", "info", "me",
+  "ltd", "plc", "ne", "or", "go", "asso", "nom", "web", "gen", "mil", "idv", "sch", "k12"
+]);
+
+function getRootDomainAndOrg(hostOrWildcard) {
+  if (!hostOrWildcard) return null;
+  const clean = hostOrWildcard.replace(/^\*\.?/, "").replace(/^https?:\/\//, "").split("/")[0].toLowerCase().trim();
+  const parts = clean.split(".").filter(Boolean);
+  if (parts.length < 2) return null;
+
+  const secondLast = parts[parts.length - 2];
+  const last = parts[parts.length - 1];
+
+  // Prevent bare TLD or bare ccSLD (e.g. co.uk, com.br, biz.pl)
+  if (parts.length === 2) {
+    if (MULTI_PART_PREFIXES.has(parts[0]) || (last.length === 2 && MULTI_PART_PREFIXES.has(secondLast))) {
+      return null;
+    }
+  }
+
+  if (parts.length >= 3) {
+    const last2 = `${secondLast}.${last}`;
+    if (MULTI_PART_TLDS.has(last2) || (last.length === 2 && MULTI_PART_PREFIXES.has(secondLast))) {
+      const root = `${parts[parts.length - 3]}.${last2}`;
+      const rawName = parts[parts.length - 3];
+      if (MULTI_PART_PREFIXES.has(rawName)) return null;
+      return { root, rawName };
+    }
+  }
+
+  const root = `${secondLast}.${last}`;
+  const rawName = secondLast;
+
+  if (MULTI_PART_PREFIXES.has(rawName) || ["io", "ai", "app", "dev", "int", "arpa"].includes(rawName)) {
+    if (parts.length >= 3) {
+      const realRaw = parts[parts.length - 3];
+      if (MULTI_PART_PREFIXES.has(realRaw)) return null;
+      return { root: `${realRaw}.${root}`, rawName: realRaw };
+    }
+    return null;
+  }
+
+  return { root, rawName };
+}
+
+function formatOrgName(raw) {
+  if (!raw || raw.length < 2) return null;
+  if (/^\d+$/.test(raw)) return null;
+  const lower = raw.toLowerCase();
+  if (MULTI_PART_PREFIXES.has(lower)) return null;
+  if (["io", "ai", "app", "dev", "mil", "int", "arpa", "www", "null", "undefined", "localhost"].includes(lower)) return null;
+  return raw.charAt(0).toUpperCase() + raw.slice(1);
+}
+
 function detectCountry(url, domains = []) {
   try {
     const list = [url, ...(domains || [])];
@@ -510,25 +574,19 @@ async function fetchAllFeeds() {
   if (results[6] && results[6].status === "fulfilled" && typeof results[6].value === "string") {
     const wildcards = results[6].value.split("\n").map(s => s.trim()).filter(Boolean);
     for (const w of wildcards) {
+      const parsed = getRootDomainAndOrg(w);
+      if (!parsed) continue;
       const clean = w.replace(/^\*\.?/, "").toLowerCase();
-      const parts = clean.split(".");
-      let matched = null;
-      for (let i = 0; i < parts.length - 1; i++) {
-        const sub = parts.slice(i).join(".");
-        if (domainIndex.has(sub)) {
-          matched = domainIndex.get(sub);
-          break;
-        }
-      }
+
+      const matched = domainIndex.get(clean) || domainIndex.get(parsed.root);
       if (matched) {
         if (!matched.domains.includes(w)) matched.domains.push(w);
         matched.isWildcard = true;
-      } else if (parts.length >= 2) {
-        const root = parts.slice(-2).join(".");
-        const progKey = `https://${root}`;
+      } else {
+        const orgName = formatOrgName(parsed.rawName);
+        if (!orgName) continue;
+        const progKey = `https://${parsed.root}`;
         if (!map.has(progKey)) {
-          const rawName = parts[parts.length - 2];
-          const orgName = rawName.charAt(0).toUpperCase() + rawName.slice(1);
           const country = detectCountry(progKey, [w]);
           const newProg = {
             id: progKey,
@@ -541,13 +599,13 @@ async function fetchAllFeeds() {
             isPrivate: false,
             isWildcard: true,
             country,
-            tags: [country.code.toLowerCase(), country.name.toLowerCase(), "bounty", "wildcard", rawName],
+            tags: [country.code.toLowerCase(), country.name.toLowerCase(), "bounty", "wildcard", parsed.rawName],
             maxReward: null,
             domains: [w],
             favicon: getFavicon(progKey)
           };
           map.set(progKey, newProg);
-          domainIndex.set(root, newProg);
+          domainIndex.set(parsed.root, newProg);
         } else {
           const ep = map.get(progKey);
           if (!ep.domains.includes(w)) ep.domains.push(w);
@@ -561,26 +619,20 @@ async function fetchAllFeeds() {
   if (results[7] && results[7].status === "fulfilled" && typeof results[7].value === "string") {
     const domains = results[7].value.split("\n").map(s => s.trim()).filter(Boolean);
     for (const d of domains) {
+      const parsed = getRootDomainAndOrg(d);
+      if (!parsed) continue;
       const clean = d.toLowerCase();
-      const parts = clean.split(".");
-      let matched = null;
-      for (let i = 0; i < parts.length - 1; i++) {
-        const sub = parts.slice(i).join(".");
-        if (domainIndex.has(sub)) {
-          matched = domainIndex.get(sub);
-          break;
-        }
-      }
+
+      const matched = domainIndex.get(clean) || domainIndex.get(parsed.root);
       if (matched) {
         if (matched.domains.length < 20 && !matched.domains.includes(clean)) {
           matched.domains.push(clean);
         }
-      } else if (parts.length >= 2) {
-        const root = parts.slice(-2).join(".");
-        const progKey = `https://${root}`;
+      } else {
+        const orgName = formatOrgName(parsed.rawName);
+        if (!orgName) continue;
+        const progKey = `https://${parsed.root}`;
         if (!map.has(progKey)) {
-          const rawName = parts[parts.length - 2];
-          const orgName = rawName.charAt(0).toUpperCase() + rawName.slice(1);
           const country = detectCountry(progKey, [clean]);
           const newProg = {
             id: progKey,
@@ -593,13 +645,13 @@ async function fetchAllFeeds() {
             isPrivate: false,
             isWildcard: false,
             country,
-            tags: [country.code.toLowerCase(), country.name.toLowerCase(), "bounty", rawName],
+            tags: [country.code.toLowerCase(), country.name.toLowerCase(), "bounty", parsed.rawName],
             maxReward: null,
             domains: [clean],
             favicon: getFavicon(progKey)
           };
           map.set(progKey, newProg);
-          domainIndex.set(root, newProg);
+          domainIndex.set(parsed.root, newProg);
         } else {
           const ep = map.get(progKey);
           if (ep.domains.length < 20 && !ep.domains.includes(clean)) ep.domains.push(clean);
@@ -608,17 +660,38 @@ async function fetchAllFeeds() {
     }
   }
 
-  // Ensure isWildcard and tag consistency
+  // Ensure isWildcard and tag consistency + eliminate false-positive bare TLDs
+  const cleanList = [];
+  const invalidNames = new Set([
+    "com", "co", "org", "net", "io", "gov", "gob", "edu", "ac", "biz", "info", "me",
+    "ai", "app", "dev", "mil", "int", "arpa", "www", "ltd", "plc", "null", "undefined"
+  ]);
+
   for (const prog of map.values()) {
+    const n = (prog.name || "").toLowerCase().trim();
+    const u = (prog.url || "").toLowerCase().trim();
+
+    // Skip false-positive bare TLDs or invalid names
+    if (invalidNames.has(n) || n.length < 2) continue;
+    if (u === "https://com" || u === "https://co.uk" || u === "https://com.au" || u === "https://com.br" || u === "https://biz.pl" || u === "https://me.uk" || u.endsWith(".com/.") || u.endsWith(".co/.")) continue;
+    try {
+      const parsedUrl = new URL(u);
+      const hParts = parsedUrl.hostname.split(".").filter(Boolean);
+      if (hParts.length <= 1) continue;
+      if (hParts.length === 2 && (invalidNames.has(hParts[0]) || MULTI_PART_PREFIXES.has(hParts[0]))) continue;
+    } catch (_) {}
+
     if (prog.domains && prog.domains.some(d => d.startsWith("*"))) {
       prog.isWildcard = true;
       if (Array.isArray(prog.tags) && !prog.tags.includes("wildcard")) {
         prog.tags.push("wildcard");
       }
     }
+
+    cleanList.push(prog);
   }
 
-  return Array.from(map.values());
+  return cleanList;
 }
 
 if (typeof module !== "undefined" && module.exports) {
