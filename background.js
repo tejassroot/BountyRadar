@@ -139,7 +139,7 @@ function matchDomainAgainstPrograms(host, programs) {
       if (new URL(prog.url).hostname.toLowerCase() === cleanHost) return prog;
     } catch (_) {}
 
-    // Check domains list (exact + wildcard)
+    // Check domains list (exact + wildcard + subdomains)
     if (Array.isArray(prog.domains)) {
       for (const d of prog.domains) {
         const cleanD = d.toLowerCase().trim();
@@ -150,6 +150,8 @@ function matchDomainAgainstPrograms(host, programs) {
           if (cleanHost === root || cleanHost.endsWith("." + root)) {
             return prog;
           }
+        } else if (cleanD.includes(".") && !cleanD.startsWith(".") && cleanHost.endsWith("." + cleanD)) {
+          return prog;
         }
       }
     }

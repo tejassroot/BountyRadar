@@ -221,7 +221,13 @@ async function fetchDiscloseIO() {
       if (normUrl) {
         try {
           const host = new URL(normUrl).hostname;
-          if (host) domains.push(host);
+          if (host) {
+            domains.push(host);
+            const rootObj = getRootDomainAndOrg(host);
+            if (rootObj && rootObj.root && rootObj.root !== host && !domains.includes(rootObj.root)) {
+              domains.push(rootObj.root);
+            }
+          }
         } catch (_) {}
       }
 

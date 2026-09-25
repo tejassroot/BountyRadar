@@ -208,6 +208,8 @@ function matchDomainAgainstPrograms(host, programs) {
           if (cleanHost === root || cleanHost.endsWith("." + root)) {
             return prog;
           }
+        } else if (cleanD.includes(".") && !cleanD.startsWith(".") && cleanHost.endsWith("." + cleanD)) {
+          return prog;
         }
       }
     }
