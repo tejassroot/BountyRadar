@@ -13,10 +13,11 @@
 Traditional browser extensions require you to manually browse to target websites before they detect anything. **BountyRadar** inverts this model:
 
 1. **Autonomous Feed Ingestion**: In the background, BountyRadar pulls from live global trackers: **Disclose.io (diodb)**, **HackerOne**, **Bugcrowd**, **ProjectDiscovery**, **Intigriti**, and **YesWeHack**.
-2. **Instant Index of 3,000+ Programs**: Includes **1,550+ Self-Hosted / Independent** company disclosure policies that are not listed on traditional bug bounty portals.
-3. **Zero-Click Auto-Sync**: Automatically syncs on browser startup and popup launch—no manual buttons required.
-4. **Diff & Fresh Discovery Engine**: Tracks newly added programs and flags them with `🔥 NEW`.
-5. **1-Click Scope Copy**: Copy all in-scope domains formatted line-by-line, ready to pipe into `subfinder`, `httpx`, or `nuclei`.
+2. **Unlimited & Continuous Discovery**: No fixed limit or static database—dynamically pulls live upstream diffs with cache-busting on every sync, continuously growing your target radar with newly launched public & private programs.
+3. **🌍 Global Country & TLD Regional Radar**: Automatically detects and tags programs by national domain extensions and sovereign regions (`🏛️ .gov`, `🇩🇪 .de`, `🇬🇧 .uk`, `🇳🇱 .nl`, `🇨🇭 .ch`, `🇮🇳 .in`, `🇦🇺 .au`, `🇨🇦 .ca`, `🇫🇷 .fr`, `🇪🇺 .eu`, `🎓 .edu`, `🇧🇷 .br`, `🌐 US/Global`).
+4. **Zero-Click Auto-Sync**: Automatically checks and syncs live feeds on browser startup and popup launch—no manual buttons required.
+5. **Diff & Fresh Discovery Engine**: Tracks newly added programs and flags them with `🔥 NEW`.
+6. **1-Click Scope Copy**: Copy all in-scope domains formatted line-by-line, ready to pipe into `subfinder`, `httpx`, or `nuclei`.
 
 ---
 
@@ -79,10 +80,12 @@ cd BountyRadar; npx web-ext run
 | Feature | Description |
 | :--- | :--- |
 | **⚡ Zero-Click Sync** | Automatically pulls fresh data on startup; no manual sync clicking needed. |
+| **🌍 Country & TLD Radar** | Filter across 20+ national and sovereign domains (`.gov`, `.de`, `.uk`, `.nl`, `.in`, `.ch`, `.au`, `.ca`, `.fr`, etc.). |
+| **♾️ Unlimited Live Ingestion** | Dynamic feed cache-busting ensures newly launched targets are ingested without fixed caps. |
 | **📊 Interactive Bento Grid** | Click any metric card (**Total**, **🔥 Fresh**, **🌐 Self-Hosted**, **🔒 Private**) for instant 1-click filtering. |
 | **📋 1-Click Scope Copy** | Click **"Copy Scope"** on any program to copy all target domains formatted for recon CLI tools. |
 | **🏷️ Quick Hunter Tags** | One-click chips for `API`, `Crypto`, `Mobile`, `Hall of Fame`, `security.txt`, `Safe Harbor`, etc. |
-| **🔍 Smart Search & Hotkey** | Press **`/`** to focus search; supports multi-word queries (e.g. `bugcrowd api`, `private crypto`). |
+| **🔍 Smart Search & Hotkey** | Press **`/`** to focus search; supports multi-word queries (e.g. `bugcrowd api`, `private crypto`, `germany`, `gov`). |
 | **📥 JSON Export** | Export filtered programs to structured JSON for automation pipelines. |
 
 ---

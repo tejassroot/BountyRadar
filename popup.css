@@ -508,6 +508,53 @@ body {
   box-shadow: 0 0 10px rgba(56, 189, 248, 0.2);
 }
 
+/* Country & Regional Discovery Chips */
+.country-chips-wrapper {
+  margin-top: 6px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.country-chips-wrapper::-webkit-scrollbar {
+  display: none;
+}
+
+.country-chips-bar {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  white-space: nowrap;
+}
+
+.country-chip {
+  background: rgba(15, 23, 42, 0.7);
+  border: 1px solid var(--border-subtle);
+  color: var(--text-secondary);
+  font-size: 10px;
+  font-weight: 600;
+  padding: 3px 8px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.country-chip:hover {
+  border-color: var(--accent-emerald);
+  color: #fff;
+  background: rgba(16, 185, 129, 0.12);
+  transform: translateY(-1px);
+}
+
+.country-chip.active {
+  background: rgba(16, 185, 129, 0.2);
+  border-color: var(--accent-emerald);
+  color: #34d399;
+  box-shadow: 0 0 8px rgba(16, 185, 129, 0.25);
+}
+
 /* ==========================================================================
    Content Area & Program Cards
    ========================================================================== */
@@ -667,6 +714,16 @@ body {
   background: rgba(100, 116, 139, 0.2);
   color: #94a3b8;
   border: 1px solid rgba(100, 116, 139, 0.25);
+}
+
+.badge-country {
+  background: rgba(56, 189, 248, 0.1);
+  color: #38bdf8;
+  border: 1px solid rgba(56, 189, 248, 0.25);
+  font-family: var(--font-mono);
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
 }
 
 /* Card Scope / Domains Row */

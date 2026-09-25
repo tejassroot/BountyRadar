@@ -42,6 +42,57 @@ function getFavicon(url, size = 32) {
   }
 }
 
+const TLD_COUNTRY_MAP = {
+  de: { code: "DE", flag: "🇩🇪", name: "Germany" },
+  uk: { code: "UK", flag: "🇬🇧", name: "United Kingdom" },
+  "co.uk": { code: "UK", flag: "🇬🇧", name: "United Kingdom" },
+  fr: { code: "FR", flag: "🇫🇷", name: "France" },
+  nl: { code: "NL", flag: "🇳🇱", name: "Netherlands" },
+  "in": { code: "IN", flag: "🇮🇳", name: "India" },
+  "co.in": { code: "IN", flag: "🇮🇳", name: "India" },
+  ch: { code: "CH", flag: "🇨🇭", name: "Switzerland" },
+  jp: { code: "JP", flag: "🇯🇵", name: "Japan" },
+  "co.jp": { code: "JP", flag: "🇯🇵", name: "Japan" },
+  au: { code: "AU", flag: "🇦🇺", name: "Australia" },
+  "com.au": { code: "AU", flag: "🇦🇺", name: "Australia" },
+  ca: { code: "CA", flag: "🇨🇦", name: "Canada" },
+  br: { code: "BR", flag: "🇧🇷", name: "Brazil" },
+  "com.br": { code: "BR", flag: "🇧🇷", name: "Brazil" },
+  se: { code: "SE", flag: "🇸🇪", name: "Sweden" },
+  no: { code: "NO", flag: "🇳🇴", name: "Norway" },
+  fi: { code: "FI", flag: "🇫🇮", name: "Finland" },
+  es: { code: "ES", flag: "🇪🇸", name: "Spain" },
+  it: { code: "IT", flag: "🇮🇹", name: "Italy" },
+  sg: { code: "SG", flag: "🇸🇬", name: "Singapore" },
+  nz: { code: "NZ", flag: "🇳🇿", name: "New Zealand" },
+  gov: { code: "GOV", flag: "🏛️", name: "Government" },
+  edu: { code: "EDU", flag: "🎓", name: "Education" },
+  eu: { code: "EU", flag: "🇪🇺", name: "European Union" }
+};
+
+function detectCountry(url, domains = []) {
+  try {
+    const list = [url, ...(domains || [])];
+    for (const item of list) {
+      if (!item) continue;
+      let host = "";
+      try {
+        host = new URL(item).hostname.toLowerCase();
+      } catch (_) {
+        host = item.toLowerCase();
+      }
+      const parts = host.split(".");
+      if (parts.length >= 2) {
+        const tld2 = parts.slice(-2).join(".");
+        const tld1 = parts.slice(-1)[0];
+        if (TLD_COUNTRY_MAP[tld2]) return TLD_COUNTRY_MAP[tld2];
+        if (TLD_COUNTRY_MAP[tld1]) return TLD_COUNTRY_MAP[tld1];
+      }
+    }
+  } catch (_) {}
+  return { code: "GL", flag: "🌐", name: "Global / US" };
+}
+
 function extractProgramTags(name, url, platform, domains, extra = {}) {
   const tags = new Set();
   const text = `${name || ""} ${url || ""} ${platform || ""} ${(domains || []).join(" ")} ${JSON.stringify(extra)}`.toLowerCase();
@@ -53,6 +104,10 @@ function extractProgramTags(name, url, platform, domains, extra = {}) {
   if (extra.hasSafeHarbor) tags.add("safe-harbor");
   if (extra.hasHallOfFame) tags.add("hall-of-fame");
   if (extra.hasSecurityTxt) tags.add("security.txt");
+  if (extra.country) {
+    tags.add(extra.country.code.toLowerCase());
+    tags.add(extra.country.name.toLowerCase());
+  }
 
   if (text.includes("api") || text.includes("rest") || text.includes("graphql")) tags.add("api");
   if (text.includes("crypto") || text.includes("web3") || text.includes("token") || text.includes("blockchain") || text.includes("contract") || text.includes("wallet")) tags.add("crypto");
@@ -73,9 +128,14 @@ const FEED_SOURCES = {
   bugcrowd: "https://raw.githubusercontent.com/arkadiyt/bounty-targets-data/master/data/bugcrowd_data.json"
 };
 
+async function fetchLiveFeed(url) {
+  const dynamicUrl = `${url}?_cb=${Date.now()}`;
+  return fetch(dynamicUrl, { cache: "no-cache" });
+}
+
 async function fetchDiscloseIO() {
   try {
-    const res = await fetch(FEED_SOURCES.diodb, { cache: "no-cache" });
+    const res = await fetchLiveFeed(FEED_SOURCES.diodb);
     if (!res.ok) return [];
     const list = await res.json();
     if (!Array.isArray(list)) return [];
@@ -99,6 +159,7 @@ async function fetchDiscloseIO() {
         } catch (_) {}
       }
 
+      const country = detectCountry(normUrl, domains);
       const tags = extractProgramTags(p.program_name, normUrl, plat, domains, {
         isSelfHosted: plat === "Self-Hosted",
         hasBounty: offersBounty,
@@ -106,7 +167,8 @@ async function fetchDiscloseIO() {
         isPrivate,
         hasSafeHarbor,
         hasHallOfFame,
-        hasSecurityTxt
+        hasSecurityTxt,
+        country
       });
 
       return {
@@ -121,6 +183,7 @@ async function fetchDiscloseIO() {
         hasSafeHarbor,
         hasHallOfFame,
         hasSecurityTxt,
+        country,
         tags,
         maxReward: null,
         domains,
@@ -135,7 +198,7 @@ async function fetchDiscloseIO() {
 
 async function fetchHackerOne() {
   try {
-    const res = await fetch(FEED_SOURCES.hackerone, { cache: "no-cache" });
+    const res = await fetchLiveFeed(FEED_SOURCES.hackerone);
     if (!res.ok) return [];
     const list = await res.json();
     if (!Array.isArray(list)) return [];
@@ -156,11 +219,13 @@ async function fetchHackerOne() {
         normUrl.toLowerCase().includes("private");
       const hasBounty = Boolean(p.offers_bounties);
       const hasSwag = Boolean(p.offers_swag);
+      const country = detectCountry(normUrl, domains);
       const tags = extractProgramTags(p.name || handle, normUrl, "HackerOne", domains, {
         isSelfHosted: false,
         hasBounty,
         hasSwag,
-        isPrivate
+        isPrivate,
+        country
       });
 
       return {
@@ -172,6 +237,7 @@ async function fetchHackerOne() {
         hasBounty,
         hasSwag,
         isPrivate,
+        country,
         tags,
         maxReward: null,
         domains: domains.slice(0, 10),
@@ -186,7 +252,7 @@ async function fetchHackerOne() {
 
 async function fetchProjectDiscovery() {
   try {
-    const res = await fetch(FEED_SOURCES.projectdiscovery, { cache: "no-cache" });
+    const res = await fetchLiveFeed(FEED_SOURCES.projectdiscovery);
     if (!res.ok) return [];
     const json = await res.json();
     const list = Array.isArray(json.programs) ? json.programs : [];
@@ -198,11 +264,13 @@ async function fetchProjectDiscovery() {
       const hasBounty = Boolean(p.bounty);
       const hasSwag = Boolean(p.swag);
       const domains = Array.isArray(p.domains) ? p.domains : [];
+      const country = detectCountry(normUrl, domains);
       const tags = extractProgramTags(p.name, normUrl, plat, domains, {
         isSelfHosted: plat === "Self-Hosted",
         hasBounty,
         hasSwag,
-        isPrivate
+        isPrivate,
+        country
       });
 
       return {
@@ -214,6 +282,7 @@ async function fetchProjectDiscovery() {
         hasBounty,
         hasSwag,
         isPrivate,
+        country,
         tags,
         maxReward: null,
         domains,
@@ -228,7 +297,7 @@ async function fetchProjectDiscovery() {
 
 async function fetchIntigriti() {
   try {
-    const res = await fetch(FEED_SOURCES.intigriti, { cache: "no-cache" });
+    const res = await fetchLiveFeed(FEED_SOURCES.intigriti);
     if (!res.ok) return [];
     const list = await res.json();
     if (!Array.isArray(list)) return [];
@@ -244,11 +313,13 @@ async function fetchIntigriti() {
       const maxVal = p.max_bounty?.value;
       const hasBounty = typeof maxVal === "number" && maxVal > 0;
       const isPrivate = (p.name || "").toLowerCase().includes("private") || normUrl.toLowerCase().includes("private");
+      const country = detectCountry(normUrl, domains);
       const tags = extractProgramTags(p.name, normUrl, "Intigriti", domains, {
         isSelfHosted: false,
         hasBounty,
         hasSwag: false,
-        isPrivate
+        isPrivate,
+        country
       });
 
       return {
@@ -260,6 +331,7 @@ async function fetchIntigriti() {
         hasBounty,
         hasSwag: false,
         isPrivate,
+        country,
         tags,
         maxReward: hasBounty ? `${maxVal} ${p.max_bounty?.currency || "EUR"}` : null,
         domains,
@@ -274,7 +346,7 @@ async function fetchIntigriti() {
 
 async function fetchBugcrowd() {
   try {
-    const res = await fetch(FEED_SOURCES.bugcrowd, { cache: "no-cache" });
+    const res = await fetchLiveFeed(FEED_SOURCES.bugcrowd);
     if (!res.ok) return [];
     const list = await res.json();
     if (!Array.isArray(list)) return [];
@@ -290,11 +362,13 @@ async function fetchBugcrowd() {
       }
       const hasBounty = typeof p.max_payout === "number" && p.max_payout > 0;
       const isPrivate = (p.name || "").toLowerCase().includes("private") || normUrl.toLowerCase().includes("private");
+      const country = detectCountry(normUrl, domains);
       const tags = extractProgramTags(p.name, normUrl, "Bugcrowd", domains, {
         isSelfHosted: false,
         hasBounty,
         hasSwag: false,
-        isPrivate
+        isPrivate,
+        country
       });
 
       return {
@@ -306,6 +380,7 @@ async function fetchBugcrowd() {
         hasBounty,
         hasSwag: false,
         isPrivate,
+        country,
         tags,
         maxReward: hasBounty ? `$${p.max_payout}` : null,
         domains,
@@ -320,7 +395,7 @@ async function fetchBugcrowd() {
 
 async function fetchYesWeHack() {
   try {
-    const res = await fetch(FEED_SOURCES.yeswehack, { cache: "no-cache" });
+    const res = await fetchLiveFeed(FEED_SOURCES.yeswehack);
     if (!res.ok) return [];
     const list = await res.json();
     if (!Array.isArray(list)) return [];
@@ -336,11 +411,13 @@ async function fetchYesWeHack() {
       const hasBounty = typeof p.max_bounty === "number" && p.max_bounty > 0;
       const hasSwag = false;
       const isPrivate = (p.name || "").toLowerCase().includes("private") || normUrl.toLowerCase().includes("private");
+      const country = detectCountry(normUrl, domains);
       const tags = extractProgramTags(p.name, normUrl, "YesWeHack", domains, {
         isSelfHosted: false,
         hasBounty,
         hasSwag,
-        isPrivate
+        isPrivate,
+        country
       });
 
       return {
@@ -352,6 +429,7 @@ async function fetchYesWeHack() {
         hasBounty,
         hasSwag,
         isPrivate,
+        country,
         tags,
         maxReward: hasBounty ? `€${p.max_bounty}` : null,
         domains,
@@ -391,6 +469,9 @@ async function fetchAllFeeds() {
           if (item.hasSafeHarbor) existing.hasSafeHarbor = true;
           if (item.hasHallOfFame) existing.hasHallOfFame = true;
           if (item.hasSecurityTxt) existing.hasSecurityTxt = true;
+          if (item.country && (!existing.country || existing.country.code === "GL")) {
+            existing.country = item.country;
+          }
           if (Array.isArray(item.tags) && Array.isArray(existing.tags)) {
             existing.tags = Array.from(new Set([...existing.tags, ...item.tags]));
           }
@@ -409,7 +490,11 @@ if (typeof module !== "undefined" && module.exports) {
   module.exports = {
     detectPlatform,
     normalizeUrl,
+    detectCountry,
+    TLD_COUNTRY_MAP,
+    fetchLiveFeed,
     getFavicon,
     fetchAllFeeds
   };
 }
+

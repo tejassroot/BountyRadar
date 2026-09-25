@@ -10,6 +10,7 @@ const state = {
   newCount: 0,
   isSyncing: false,
   activeFilter: "all",
+  activeCountry: "all",
   searchQuery: ""
 };
 
@@ -23,6 +24,7 @@ const searchClearBtn = document.getElementById("search-clear");
 const resultsCountPill = document.getElementById("results-count-pill");
 const filterTabs = document.querySelectorAll(".tab-btn");
 const chipsBtns = document.querySelectorAll(".chip-btn");
+const countryChips = document.querySelectorAll(".country-chip");
 const metricCards = document.querySelectorAll(".metric-card");
 const syncBtn = document.getElementById("sync-btn");
 const syncIcon = document.getElementById("sync-icon");
@@ -78,6 +80,14 @@ function updateMetrics() {
 }
 
 function matchesFilter(p) {
+  if (state.activeCountry !== "all") {
+    const pCode = (p.country && p.country.code) || "GL";
+    if (state.activeCountry === "GL") {
+      if (pCode !== "GL") return false;
+    } else if (pCode !== state.activeCountry) {
+      return false;
+    }
+  }
   if (state.activeFilter === "fresh") return p.isNew;
   if (state.activeFilter === "private") return p.isPrivate;
   if (state.activeFilter === "selfhosted") return p.isSelfHosted;
@@ -205,6 +215,14 @@ function renderList() {
     typeBadge.textContent = prog.hasBounty ? "Bounty" : "VDP";
     badges.appendChild(typeBadge);
 
+    if (prog.country && prog.country.code) {
+      const countryBadge = document.createElement("span");
+      countryBadge.className = "badge badge-country";
+      countryBadge.textContent = `${prog.country.flag} ${prog.country.code}`;
+      countryBadge.title = `Region: ${prog.country.name}`;
+      badges.appendChild(countryBadge);
+    }
+
     top.appendChild(ident);
     top.appendChild(badges);
     card.appendChild(top);
@@ -273,7 +291,8 @@ async function triggerAutoSync() {
     const res = await chrome.runtime.sendMessage({ type: "BOUNTYRADAR_FORCE_SYNC" });
     if (res && res.ok) {
       if (syncText) syncText.textContent = "Synced!";
-      showToast(`Updated ${res.total || 3000}+ programs`, "🔄");
+      const count = res.total || state.programs.length;
+      showToast(`Updated ${count.toLocaleString()} live programs!`, "🔄");
       setTimeout(() => {
         if (syncText) syncText.textContent = "Sync";
       }, 1500);
@@ -378,6 +397,16 @@ filterTabs.forEach((tab) => {
     filterTabs.forEach((t) => t.classList.remove("active"));
     tab.classList.add("active");
     state.activeFilter = tab.getAttribute("data-filter");
+    renderList();
+  });
+});
+
+// Country & Regional Discovery Chips
+countryChips.forEach((chip) => {
+  chip.addEventListener("click", () => {
+    countryChips.forEach((c) => c.classList.remove("active"));
+    chip.classList.add("active");
+    state.activeCountry = chip.getAttribute("data-country") || "all";
     renderList();
   });
 });
