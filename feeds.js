@@ -43,11 +43,89 @@ function getFavicon(url, size = 32) {
 }
 
 const FEED_SOURCES = {
+  diodb: "https://raw.githubusercontent.com/disclose/diodb/master/program-list.json",
+  hackerone: "https://raw.githubusercontent.com/arkadiyt/bounty-targets-data/master/data/hackerone_data.json",
   projectdiscovery: "https://raw.githubusercontent.com/projectdiscovery/public-bugbounty-programs/main/dist/data.json",
   intigriti: "https://raw.githubusercontent.com/arkadiyt/bounty-targets-data/master/data/intigriti_data.json",
   yeswehack: "https://raw.githubusercontent.com/arkadiyt/bounty-targets-data/master/data/yeswehack_data.json",
   bugcrowd: "https://raw.githubusercontent.com/arkadiyt/bounty-targets-data/master/data/bugcrowd_data.json"
 };
+
+async function fetchDiscloseIO() {
+  try {
+    const res = await fetch(FEED_SOURCES.diodb, { cache: "no-cache" });
+    if (!res.ok) return [];
+    const list = await res.json();
+    if (!Array.isArray(list)) return [];
+
+    return list.map((p) => {
+      const normUrl = normalizeUrl(p.policy_url);
+      const plat = detectPlatform(normUrl);
+      const offersBounty = String(p.offers_bounty || "").toLowerCase() === "yes" || p.offers_bounty === true;
+      const domains = [];
+      if (normUrl) {
+        try {
+          const host = new URL(normUrl).hostname;
+          if (host) domains.push(host);
+        } catch (_) {}
+      }
+
+      return {
+        id: normUrl || p.program_name,
+        name: p.program_name || "Unknown Program",
+        url: normUrl,
+        platform: plat,
+        isSelfHosted: plat === "Self-Hosted",
+        hasBounty: offersBounty,
+        hasSwag: Boolean(p.offers_swag),
+        maxReward: null,
+        domains,
+        favicon: getFavicon(normUrl)
+      };
+    });
+  } catch (err) {
+    console.warn("Failed to fetch Disclose.io feed:", err);
+    return [];
+  }
+}
+
+async function fetchHackerOne() {
+  try {
+    const res = await fetch(FEED_SOURCES.hackerone, { cache: "no-cache" });
+    if (!res.ok) return [];
+    const list = await res.json();
+    if (!Array.isArray(list)) return [];
+
+    return list.map((p) => {
+      const handle = p.handle || "";
+      const normUrl = normalizeUrl(p.url || (handle ? `https://hackerone.com/${handle}` : ""));
+      const domains = [];
+      if (p.targets && Array.isArray(p.targets.in_scope)) {
+        for (const t of p.targets.in_scope) {
+          if (t.asset_identifier && !t.asset_identifier.includes(" ")) {
+            domains.push(t.asset_identifier);
+          }
+        }
+      }
+
+      return {
+        id: normUrl || p.name,
+        name: p.name || handle,
+        url: normUrl,
+        platform: "HackerOne",
+        isSelfHosted: false,
+        hasBounty: Boolean(p.offers_bounties),
+        hasSwag: Boolean(p.offers_swag),
+        maxReward: null,
+        domains: domains.slice(0, 10),
+        favicon: getFavicon(normUrl)
+      };
+    });
+  } catch (err) {
+    console.warn("Failed to fetch HackerOne feed:", err);
+    return [];
+  }
+}
 
 async function fetchProjectDiscovery() {
   try {
@@ -187,7 +265,9 @@ async function fetchYesWeHack() {
 
 async function fetchAllFeeds() {
   const results = await Promise.allSettled([
+    fetchDiscloseIO(),
     fetchProjectDiscovery(),
+    fetchHackerOne(),
     fetchIntigriti(),
     fetchBugcrowd(),
     fetchYesWeHack()

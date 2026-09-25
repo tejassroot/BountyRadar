@@ -8,8 +8,8 @@
 
 Traditional extensions require you to manually browse to target websites before they detect anything. **BountyRadar** inverts this model:
 
-1. **Autonomous Feed Ingestion**: In the background, BountyRadar pulls from live public trackers (ProjectDiscovery, Arkadiyt feeds, Intigriti, Bugcrowd, YesWeHack).
-2. **Instant Index of 1,200+ Programs**: Includes **220+ Self-Hosted / Independent** company disclosure policies that are not listed on traditional bug bounty portals.
+1. **Autonomous Feed Ingestion**: In the background, BountyRadar pulls from live global trackers: **Disclose.io (diodb)**, **HackerOne**, **Bugcrowd**, **ProjectDiscovery**, **Intigriti**, and **YesWeHack**.
+2. **Instant Index of 3,000+ Programs**: Includes **1,550+ Self-Hosted / Independent** company disclosure policies that are not listed on traditional bug bounty portals.
 3. **Diff & Fresh Discovery Engine**: Every 6 hours (configurable via background alarms), it fetches the latest data. Any newly added program is automatically tagged with `🔥 NEW`.
 4. **Browser Notifications & Badge Alerts**: Alerts you directly when new programs are launched.
 
