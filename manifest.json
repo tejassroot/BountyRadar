@@ -3,7 +3,7 @@
   "name": "BountyRadar - Fresh Bounty & VDP Hunter",
   "version": "1.0.0",
   "description": "Autonomously discovers newly published, self-hosted, and unlisted bug bounty programs without having to visit websites.",
-  "permissions": ["storage", "alarms", "notifications"],
+  "permissions": ["storage", "unlimitedStorage", "alarms", "notifications"],
   "host_permissions": ["https://raw.githubusercontent.com/*"],
   "background": {
     "service_worker": "background.js",

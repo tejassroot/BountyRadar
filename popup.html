@@ -51,8 +51,12 @@
   <!-- Bento Metrics Bar -->
   <section class="metrics-bar">
     <div class="metric-card" data-filter-target="all" title="View all programs">
-      <span class="metric-label">Total Index</span>
+      <span class="metric-label">Programs</span>
       <span class="metric-value" id="stat-total">0</span>
+    </div>
+    <div class="metric-card card-targets" data-filter-target="wildcards" title="View in-scope wildcard target domains">
+      <span class="metric-label">🎯 Targets</span>
+      <span class="metric-value" id="stat-targets">0</span>
     </div>
     <div class="metric-card card-fresh" data-filter-target="fresh" title="View fresh discoveries">
       <span class="metric-label">🔥 Fresh</span>
@@ -75,7 +79,7 @@
         <circle cx="11" cy="11" r="8"/>
         <line x1="21" y1="21" x2="16.65" y2="16.65"/>
       </svg>
-      <input type="text" id="search-input" placeholder="Search by common words (e.g. bugcrowd api, private, crypto, *.target.com)..." autocomplete="off" spellcheck="false">
+      <input type="text" id="search-input" placeholder="Search across 30,000+ targets (e.g. *.arlo.com, api, crypto, de, gov)..." autocomplete="off" spellcheck="false">
       <span id="results-count-pill" class="results-pill">0</span>
       <button id="search-clear" class="btn-clear hidden" title="Clear search">×</button>
     </div>
@@ -84,6 +88,7 @@
     <div class="common-chips-wrapper">
       <div class="common-chips-bar" id="chips-bar">
         <span class="chips-title">TAGS:</span>
+        <button class="chip-btn" data-word="wildcard">🎯 Wildcard (*)</button>
         <button class="chip-btn" data-word="fresh">🔥 Fresh</button>
         <button class="chip-btn" data-word="private">🔒 Private/NDA</button>
         <button class="chip-btn" data-word="self-hosted">🌐 Self-Hosted</button>
@@ -102,6 +107,7 @@
     <div class="filter-tabs-wrapper">
       <div class="filter-tabs">
         <button class="tab-btn active" data-filter="all">All</button>
+        <button class="tab-btn" data-filter="wildcards">🎯 Wildcards</button>
         <button class="tab-btn" data-filter="fresh">🔥 Fresh</button>
         <button class="tab-btn" data-filter="private">🔒 Private</button>
         <button class="tab-btn" data-filter="selfhosted">🌐 Self-Hosted</button>

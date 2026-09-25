@@ -12,12 +12,13 @@
 
 Traditional browser extensions require you to manually browse to target websites before they detect anything. **BountyRadar** inverts this model:
 
-1. **Autonomous Feed Ingestion**: In the background, BountyRadar pulls from live global trackers: **Disclose.io (diodb)**, **HackerOne**, **Bugcrowd**, **ProjectDiscovery**, **Intigriti**, and **YesWeHack**.
-2. **Unlimited & Continuous Discovery**: No fixed limit or static database—dynamically pulls live upstream diffs with cache-busting on every sync, continuously growing your target radar with newly launched public & private programs.
-3. **🌍 Global Country & TLD Regional Radar**: Automatically detects and tags programs by national domain extensions and sovereign regions (`🏛️ .gov`, `🇩🇪 .de`, `🇬🇧 .uk`, `🇳🇱 .nl`, `🇨🇭 .ch`, `🇮🇳 .in`, `🇦🇺 .au`, `🇨🇦 .ca`, `🇫🇷 .fr`, `🇪🇺 .eu`, `🎓 .edu`, `🇧🇷 .br`, `🌐 US/Global`).
-4. **Zero-Click Auto-Sync**: Automatically checks and syncs live feeds on browser startup and popup launch—no manual buttons required.
-5. **Diff & Fresh Discovery Engine**: Tracks newly added programs and flags them with `🔥 NEW`.
-6. **1-Click Scope Copy**: Copy all in-scope domains formatted line-by-line, ready to pipe into `subfinder`, `httpx`, or `nuclei`.
+1. **Autonomous Feed Ingestion**: In the background, BountyRadar pulls from live global trackers: **Disclose.io (diodb)**, **HackerOne**, **Bugcrowd**, **ProjectDiscovery**, **Intigriti**, **YesWeHack**, plus **3,500+ in-scope Wildcards** and **36,000+ Target Domains**.
+2. **Massive Index of 12,500+ Organizations & 30,000+ Targets**: Dynamically aggregates over **12,500+ verified bug bounty & VDP organizations** and **30,000+ in-scope target domains** across 20+ countries and sovereign extensions.
+3. **🎯 Dedicated Wildcard Scope Radar**: Filter directly by wildcard targets (`*.example.com`) across 1,800+ programs for deep subdomain takeover & enumeration workflows.
+4. **🌍 Global Country & TLD Regional Radar**: Automatically detects and tags programs by national domain extensions and sovereign regions (`🏛️ .gov`, `🇩🇪 .de`, `🇬🇧 .uk`, `🇳🇱 .nl`, `🇨🇭 .ch`, `🇮🇳 .in`, `🇦🇺 .au`, `🇨🇦 .ca`, `🇫🇷 .fr`, `🇪🇺 .eu`, `🎓 .edu`, `🇧🇷 .br`, `🌐 US/Global`).
+5. **Zero-Click Auto-Sync**: Automatically checks and syncs live feeds on browser startup and popup launch—no manual buttons required.
+6. **Diff & Fresh Discovery Engine**: Tracks newly added programs and flags them with `🔥 NEW`.
+7. **1-Click Scope Copy**: Copy all in-scope domains formatted line-by-line, ready to pipe into `subfinder`, `httpx`, or `nuclei`.
 
 ---
 
@@ -80,12 +81,13 @@ cd BountyRadar; npx web-ext run
 | Feature | Description |
 | :--- | :--- |
 | **⚡ Zero-Click Sync** | Automatically pulls fresh data on startup; no manual sync clicking needed. |
+| **🎯 Wildcard Radar** | Isolate 1,800+ wildcard domain programs (`*.example.com`) for massive subdomain expansion. |
 | **🌍 Country & TLD Radar** | Filter across 20+ national and sovereign domains (`.gov`, `.de`, `.uk`, `.nl`, `.in`, `.ch`, `.au`, `.ca`, `.fr`, etc.). |
-| **♾️ Unlimited Live Ingestion** | Dynamic feed cache-busting ensures newly launched targets are ingested without fixed caps. |
-| **📊 Interactive Bento Grid** | Click any metric card (**Total**, **🔥 Fresh**, **🌐 Self-Hosted**, **🔒 Private**) for instant 1-click filtering. |
+| **♾️ Unlimited Live Ingestion** | Ingests 12,500+ programs and 30,000+ targets dynamically with cache-busting live diffs. |
+| **📊 5-Card Bento Grid** | Real-time counts for **Programs**, **🎯 Targets**, **🔥 Fresh**, **🌐 Self-Hosted**, and **🔒 Private**. |
 | **📋 1-Click Scope Copy** | Click **"Copy Scope"** on any program to copy all target domains formatted for recon CLI tools. |
-| **🏷️ Quick Hunter Tags** | One-click chips for `API`, `Crypto`, `Mobile`, `Hall of Fame`, `security.txt`, `Safe Harbor`, etc. |
-| **🔍 Smart Search & Hotkey** | Press **`/`** to focus search; supports multi-word queries (e.g. `bugcrowd api`, `private crypto`, `germany`, `gov`). |
+| **🏷️ Quick Hunter Tags** | One-click chips for `Wildcard (*)`, `API`, `Crypto`, `Mobile`, `Hall of Fame`, `security.txt`, etc. |
+| **🔍 Smart Search & Hotkey** | Press **`/`** to focus search across 30,000+ target domains, companies, countries, and platforms. |
 | **📥 JSON Export** | Export filtered programs to structured JSON for automation pipelines. |
 
 ---

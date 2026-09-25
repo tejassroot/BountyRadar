@@ -37,6 +37,7 @@ const toastMsg = document.getElementById("toast-msg");
 const toastIcon = document.getElementById("toast-icon");
 
 const statTotalEl = document.getElementById("stat-total");
+const statTargetsEl = document.getElementById("stat-targets");
 const statFreshEl = document.getElementById("stat-fresh");
 const statSelfHostedEl = document.getElementById("stat-selfhosted");
 const statPrivateEl = document.getElementById("stat-private");
@@ -67,6 +68,9 @@ function timeAgo(timestamp) {
 function updateMetrics() {
   statTotalEl.textContent = state.programs.length.toLocaleString();
 
+  const totalTargets = state.programs.reduce((acc, p) => acc + (p.domains ? p.domains.length : 0), 0);
+  if (statTargetsEl) statTargetsEl.textContent = totalTargets.toLocaleString();
+
   const freshCount = state.programs.filter((p) => p.isNew).length;
   statFreshEl.textContent = freshCount.toLocaleString();
 
@@ -88,6 +92,7 @@ function matchesFilter(p) {
       return false;
     }
   }
+  if (state.activeFilter === "wildcards") return Boolean(p.isWildcard);
   if (state.activeFilter === "fresh") return p.isNew;
   if (state.activeFilter === "private") return p.isPrivate;
   if (state.activeFilter === "selfhosted") return p.isSelfHosted;
@@ -105,9 +110,10 @@ function matchesSearch(p, query) {
 
   const domainsStr = Array.isArray(p.domains) ? p.domains.join(" ") : "";
   const tagsStr = Array.isArray(p.tags) ? p.tags.join(" ") : "";
-  const corpus = `${p.name || ""} ${p.url || ""} ${p.platform || ""} ${domainsStr} ${tagsStr} ${p.isPrivate ? "private nda unlisted" : ""} ${p.isSelfHosted ? "self-hosted selfhosted independent" : ""} ${p.hasBounty ? "bounty cash paid reward money" : "vdp hall of fame hof free"} ${p.isNew ? "new fresh" : ""}`.toLowerCase();
+  const corpus = `${p.name || ""} ${p.url || ""} ${p.platform || ""} ${domainsStr} ${tagsStr} ${p.isWildcard ? "wildcard *. " : ""} ${p.isPrivate ? "private nda unlisted" : ""} ${p.isSelfHosted ? "self-hosted selfhosted independent" : ""} ${p.hasBounty ? "bounty cash paid reward money" : "vdp hall of fame hof free"} ${p.isNew ? "new fresh" : ""}`.toLowerCase();
 
   return terms.every((term) => {
+    if (term === "wildcard" || term === "*") return Boolean(p.isWildcard);
     if (term === "bc") return corpus.includes("bugcrowd");
     if (term === "h1") return corpus.includes("hackerone");
     if (term === "ywh") return corpus.includes("yeswehack");
@@ -223,6 +229,13 @@ function renderList() {
       badges.appendChild(countryBadge);
     }
 
+    if (prog.isWildcard) {
+      const wildBadge = document.createElement("span");
+      wildBadge.className = "badge badge-wildcard";
+      wildBadge.textContent = "🎯 Wildcard";
+      badges.appendChild(wildBadge);
+    }
+
     top.appendChild(ident);
     top.appendChild(badges);
     card.appendChild(top);
@@ -292,7 +305,8 @@ async function triggerAutoSync() {
     if (res && res.ok) {
       if (syncText) syncText.textContent = "Synced!";
       const count = res.total || state.programs.length;
-      showToast(`Updated ${count.toLocaleString()} live programs!`, "🔄");
+      const totalTargets = state.programs.reduce((acc, p) => acc + (p.domains ? p.domains.length : 0), 0);
+      showToast(`Radar Active: ${count.toLocaleString()} Orgs (${totalTargets.toLocaleString()} Targets)!`, "🔄");
       setTimeout(() => {
         if (syncText) syncText.textContent = "Sync";
       }, 1500);

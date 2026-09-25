@@ -125,7 +125,9 @@ const FEED_SOURCES = {
   projectdiscovery: "https://raw.githubusercontent.com/projectdiscovery/public-bugbounty-programs/main/dist/data.json",
   intigriti: "https://raw.githubusercontent.com/arkadiyt/bounty-targets-data/master/data/intigriti_data.json",
   yeswehack: "https://raw.githubusercontent.com/arkadiyt/bounty-targets-data/master/data/yeswehack_data.json",
-  bugcrowd: "https://raw.githubusercontent.com/arkadiyt/bounty-targets-data/master/data/bugcrowd_data.json"
+  bugcrowd: "https://raw.githubusercontent.com/arkadiyt/bounty-targets-data/master/data/bugcrowd_data.json",
+  wildcards: "https://raw.githubusercontent.com/arkadiyt/bounty-targets-data/master/data/wildcards.txt",
+  domains: "https://raw.githubusercontent.com/arkadiyt/bounty-targets-data/master/data/domains.txt"
 };
 
 async function fetchLiveFeed(url) {
@@ -449,12 +451,17 @@ async function fetchAllFeeds() {
     fetchHackerOne(),
     fetchIntigriti(),
     fetchBugcrowd(),
-    fetchYesWeHack()
+    fetchYesWeHack(),
+    fetchLiveFeed(FEED_SOURCES.wildcards).then(r => r.ok ? r.text() : ""),
+    fetchLiveFeed(FEED_SOURCES.domains).then(r => r.ok ? r.text() : "")
   ]);
 
   const map = new Map();
+  const domainIndex = new Map();
 
-  for (const res of results) {
+  // Ingest base programs (first 6 sources)
+  for (let i = 0; i < 6; i++) {
+    const res = results[i];
     if (res.status === "fulfilled" && Array.isArray(res.value)) {
       for (const item of res.value) {
         if (!item.url && !item.name) continue;
@@ -479,6 +486,134 @@ async function fetchAllFeeds() {
             existing.domains = item.domains;
           }
         }
+      }
+    }
+  }
+
+  // Index base programs by domains and hostnames
+  for (const p of map.values()) {
+    if (p.domains) {
+      for (const d of p.domains) {
+        const clean = d.replace(/^\*\.?/, "").toLowerCase();
+        domainIndex.set(clean, p);
+      }
+    }
+    if (p.url) {
+      try {
+        const host = new URL(p.url).hostname.replace(/^www\./, "").toLowerCase();
+        domainIndex.set(host, p);
+      } catch (_) {}
+    }
+  }
+
+  // Ingest In-Scope Wildcards (Result #6)
+  if (results[6] && results[6].status === "fulfilled" && typeof results[6].value === "string") {
+    const wildcards = results[6].value.split("\n").map(s => s.trim()).filter(Boolean);
+    for (const w of wildcards) {
+      const clean = w.replace(/^\*\.?/, "").toLowerCase();
+      const parts = clean.split(".");
+      let matched = null;
+      for (let i = 0; i < parts.length - 1; i++) {
+        const sub = parts.slice(i).join(".");
+        if (domainIndex.has(sub)) {
+          matched = domainIndex.get(sub);
+          break;
+        }
+      }
+      if (matched) {
+        if (!matched.domains.includes(w)) matched.domains.push(w);
+        matched.isWildcard = true;
+      } else if (parts.length >= 2) {
+        const root = parts.slice(-2).join(".");
+        const progKey = `https://${root}`;
+        if (!map.has(progKey)) {
+          const rawName = parts[parts.length - 2];
+          const orgName = rawName.charAt(0).toUpperCase() + rawName.slice(1);
+          const country = detectCountry(progKey, [w]);
+          const newProg = {
+            id: progKey,
+            name: orgName,
+            url: progKey,
+            platform: "Target Asset",
+            isSelfHosted: false,
+            hasBounty: true,
+            hasSwag: false,
+            isPrivate: false,
+            isWildcard: true,
+            country,
+            tags: [country.code.toLowerCase(), country.name.toLowerCase(), "bounty", "wildcard", rawName],
+            maxReward: null,
+            domains: [w],
+            favicon: getFavicon(progKey)
+          };
+          map.set(progKey, newProg);
+          domainIndex.set(root, newProg);
+        } else {
+          const ep = map.get(progKey);
+          if (!ep.domains.includes(w)) ep.domains.push(w);
+          ep.isWildcard = true;
+        }
+      }
+    }
+  }
+
+  // Ingest In-Scope Domains (Result #7)
+  if (results[7] && results[7].status === "fulfilled" && typeof results[7].value === "string") {
+    const domains = results[7].value.split("\n").map(s => s.trim()).filter(Boolean);
+    for (const d of domains) {
+      const clean = d.toLowerCase();
+      const parts = clean.split(".");
+      let matched = null;
+      for (let i = 0; i < parts.length - 1; i++) {
+        const sub = parts.slice(i).join(".");
+        if (domainIndex.has(sub)) {
+          matched = domainIndex.get(sub);
+          break;
+        }
+      }
+      if (matched) {
+        if (matched.domains.length < 20 && !matched.domains.includes(clean)) {
+          matched.domains.push(clean);
+        }
+      } else if (parts.length >= 2) {
+        const root = parts.slice(-2).join(".");
+        const progKey = `https://${root}`;
+        if (!map.has(progKey)) {
+          const rawName = parts[parts.length - 2];
+          const orgName = rawName.charAt(0).toUpperCase() + rawName.slice(1);
+          const country = detectCountry(progKey, [clean]);
+          const newProg = {
+            id: progKey,
+            name: orgName,
+            url: progKey,
+            platform: "Target Asset",
+            isSelfHosted: false,
+            hasBounty: true,
+            hasSwag: false,
+            isPrivate: false,
+            isWildcard: false,
+            country,
+            tags: [country.code.toLowerCase(), country.name.toLowerCase(), "bounty", rawName],
+            maxReward: null,
+            domains: [clean],
+            favicon: getFavicon(progKey)
+          };
+          map.set(progKey, newProg);
+          domainIndex.set(root, newProg);
+        } else {
+          const ep = map.get(progKey);
+          if (ep.domains.length < 20 && !ep.domains.includes(clean)) ep.domains.push(clean);
+        }
+      }
+    }
+  }
+
+  // Ensure isWildcard and tag consistency
+  for (const prog of map.values()) {
+    if (prog.domains && prog.domains.some(d => d.startsWith("*"))) {
+      prog.isWildcard = true;
+      if (Array.isArray(prog.tags) && !prog.tags.includes("wildcard")) {
+        prog.tags.push("wildcard");
       }
     }
   }
