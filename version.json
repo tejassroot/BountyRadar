@@ -1,11 +1,14 @@
 {
-  "version": "1.2.0",
-  "name": "BountyRadar v1.2.0",
-  "releaseDate": "2026-09-25",
+  "version": "1.3.0",
+  "name": "BountyRadar v1.3.0",
+  "releaseDate": "2026-09-27",
   "minBrowserVersion": "109.0",
   "downloadUrl": "https://github.com/tejassroot/BountyRadar/releases/latest",
   "zipUrl": "https://raw.githubusercontent.com/tejassroot/BountyRadar/main/dist/bountyradar-latest.zip",
   "changelog": [
+    "Telegram Bot Push Alerts: Instant notifications delivered to your Telegram when fresh programs launch",
+    "Email Digest Alerts: Automated email updates via Resend API integration",
+    "Alert Webhook Settings: Dedicated configuration drawer with live connection test pings and secret masking",
     "Auto-Update Engine: Live notification and 1-click downloads when new versions release",
     "Active Tab Target Sniffer: Live detection and badge alerts when browsing in-scope targets",
     "Recon Tool Exporter: 1-click export for Burp Suite Target Scope JSON, Nuclei targets.txt, and Subfinder",
