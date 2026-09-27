@@ -216,6 +216,11 @@ function matchesSearch(p, query) {
   });
 }
 
+const PLATFORM_HOSTS = new Set([
+  "hackerone.com", "bugcrowd.com", "intigriti.com", "yeswehack.com",
+  "hackenproof.com", "bugbounty.ch", "openbugbounty.org", "federacy.com"
+]);
+
 // Active Tab Domain Matcher
 function matchDomainAgainstPrograms(host, programs) {
   if (!host || !programs || programs.length === 0) return null;
@@ -223,9 +228,16 @@ function matchDomainAgainstPrograms(host, programs) {
 
   for (const prog of programs) {
     if (!prog) continue;
-    try {
-      if (new URL(prog.url).hostname.toLowerCase() === cleanHost) return prog;
-    } catch (_) {}
+
+    // Only match prog.url if self-hosted (avoid matching shared bounty platform domains)
+    if (prog.isSelfHosted || prog.platform === "Self-Hosted") {
+      try {
+        const uHost = new URL(prog.url).hostname.replace(/^www\./, "").toLowerCase();
+        if (uHost && !PLATFORM_HOSTS.has(uHost)) {
+          if (cleanHost === uHost || cleanHost.endsWith("." + uHost)) return prog;
+        }
+      } catch (_) {}
+    }
 
     if (Array.isArray(prog.domains)) {
       for (const d of prog.domains) {
@@ -645,8 +657,10 @@ function downloadFile(content, filename, mimeType) {
   const a = document.createElement("a");
   a.href = url;
   a.download = filename;
+  document.body.appendChild(a);
   a.click();
-  URL.revokeObjectURL(url);
+  document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(url), 2000);
 }
 
 // Multi-Tool Export Handlers
@@ -675,7 +689,8 @@ function exportForBurpScope(filteredPrograms) {
       for (const d of p.domains) {
         const isWild = d.startsWith("*.");
         const root = isWild ? d.slice(2).trim() : d.trim();
-        const hostRegex = isWild ? `^.*\\.${root.replace(/\./g, "\\.")}$` : `^${root.replace(/\./g, "\\.")}$`;
+        // Regex matches both root domain and any subdomain for wildcards
+        const hostRegex = isWild ? `^(.*\\.)?${root.replace(/\./g, "\\.")}$` : `^${root.replace(/\./g, "\\.")}$`;
         includeRules.push({
           enabled: true,
           host: hostRegex,

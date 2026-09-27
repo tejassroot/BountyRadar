@@ -140,6 +140,11 @@ async function checkExtensionUpdate() {
   }
 }
 
+const PLATFORM_HOSTS = new Set([
+  "hackerone.com", "bugcrowd.com", "intigriti.com", "yeswehack.com",
+  "hackenproof.com", "bugbounty.ch", "openbugbounty.org", "federacy.com"
+]);
+
 // Active Tab Target Sniffer (Evaluates if current browser tab is in-scope)
 function matchDomainAgainstPrograms(host, programs) {
   if (!host || !programs || programs.length === 0) return null;
@@ -148,10 +153,15 @@ function matchDomainAgainstPrograms(host, programs) {
   for (const prog of programs) {
     if (!prog) continue;
 
-    // Check program URL hostname
-    try {
-      if (new URL(prog.url).hostname.toLowerCase() === cleanHost) return prog;
-    } catch (_) {}
+    // Check program URL hostname ONLY if self-hosted (avoid matching shared platforms like hackerone.com)
+    if (prog.isSelfHosted || prog.platform === "Self-Hosted") {
+      try {
+        const uHost = new URL(prog.url).hostname.replace(/^www\./, "").toLowerCase();
+        if (uHost && !PLATFORM_HOSTS.has(uHost)) {
+          if (cleanHost === uHost || cleanHost.endsWith("." + uHost)) return prog;
+        }
+      } catch (_) {}
+    }
 
     // Check domains list (exact + wildcard + subdomains)
     if (Array.isArray(prog.domains)) {
@@ -231,7 +241,9 @@ function escapeHtml(str) {
   return String(str || "")
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;");
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
 }
 
 async function sendTelegramAlert(botToken, chatId, programs, isTest = false) {
@@ -270,6 +282,11 @@ async function sendTelegramAlert(botToken, chatId, programs, isTest = false) {
     }
   }
 
+  // Ensure message stays safely within Telegram's 4096 character limit
+  if (text.length > 4000) {
+    text = text.slice(0, 3950) + "...\n<i>(truncated)</i>";
+  }
+
   try {
     const res = await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
       method: "POST",
@@ -281,7 +298,7 @@ async function sendTelegramAlert(botToken, chatId, programs, isTest = false) {
         disable_web_page_preview: true
       })
     });
-    const result = await res.json();
+    const result = await res.json().catch(() => ({}));
     if (!res.ok || !result.ok) {
       const errMsg = result.description || `HTTP ${res.status}`;
       console.warn("Telegram alert failed:", errMsg);
@@ -362,7 +379,7 @@ async function sendEmailAlert(apiKey, toEmail, programs, isTest = false) {
         html: html
       })
     });
-    const result = await res.json();
+    const result = await res.json().catch(() => ({}));
     if (!res.ok) {
       const errMsg = result.message || `HTTP ${res.status}`;
       console.warn("Resend email alert failed:", errMsg);
