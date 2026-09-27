@@ -25,7 +25,8 @@
   "browser_specific_settings": {
     "gecko": {
       "id": "bountyradar@tejassroot.github.io",
-      "strict_min_version": "109.0"
+      "strict_min_version": "109.0",
+      "update_url": "https://raw.githubusercontent.com/tejassroot/BountyRadar/main/updates.json"
     }
   },
   "icons": {
