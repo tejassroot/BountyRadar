@@ -98,6 +98,7 @@ cd BountyRadar; npx web-ext run
 | Feature | Description |
 | :--- | :--- |
 | **🚀 In-App Auto-Updates** | Checks GitHub releases in the background and alerts researchers with 1-click update downloads. |
+| **✈️ Telegram & ✉️ Email Alerts** | Instant push webhook alerts to your Telegram bot or email digest when fresh bug bounty programs drop. |
 | **🎯 Active Tab Target Sniffer** | Instantly highlights when you browse an in-scope website (`💰 $15,000` / `🎯 In-Scope`). |
 | **🧰 Multi-Tool Exporter** | 1-Click exports for **Nuclei** (`targets.txt`), **Burp Suite Scope** (`burp_scope.json`), and **Subfinder**. |
 | **⭐ Bookmarks & 📝 Notes** | Star favorite programs and write private confidential recon notes directly onto target cards. |

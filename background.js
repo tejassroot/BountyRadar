@@ -42,12 +42,26 @@ async function getStorageData() {
     STORAGE_KEYS.UPDATE_INFO
   ]);
 
+  const defaultSettings = {
+    syncIntervalMinutes: 360,
+    notifications: true,
+    telegram: { enabled: false, botToken: "", chatId: "" },
+    email: { enabled: false, apiKey: "", toEmail: "" }
+  };
+  const storedSettings = data[STORAGE_KEYS.SETTINGS] || {};
+  const settings = {
+    ...defaultSettings,
+    ...storedSettings,
+    telegram: { ...defaultSettings.telegram, ...(storedSettings.telegram || {}) },
+    email: { ...defaultSettings.email, ...(storedSettings.email || {}) }
+  };
+
   return {
     programs: Array.isArray(data[STORAGE_KEYS.PROGRAMS]) ? data[STORAGE_KEYS.PROGRAMS] : [],
     knownIds: Array.isArray(data[STORAGE_KEYS.KNOWN_IDS]) ? new Set(data[STORAGE_KEYS.KNOWN_IDS]) : new Set(),
     lastSync: data[STORAGE_KEYS.LAST_SYNC] || 0,
     newCount: data[STORAGE_KEYS.NEW_COUNT] || 0,
-    settings: data[STORAGE_KEYS.SETTINGS] || { syncIntervalMinutes: 360, notifications: true },
+    settings,
     bookmarks: Array.isArray(data[STORAGE_KEYS.BOOKMARKS]) ? data[STORAGE_KEYS.BOOKMARKS] : [],
     notes: data[STORAGE_KEYS.NOTES] || {},
     updateInfo: data[STORAGE_KEYS.UPDATE_INFO] || null,
@@ -213,6 +227,154 @@ chrome.tabs?.onUpdated.addListener((tabId, changeInfo, tab) => {
   }
 });
 
+function escapeHtml(str) {
+  return String(str || "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+}
+
+async function sendTelegramAlert(botToken, chatId, programs, isTest = false) {
+  if (!botToken || !chatId) {
+    return { ok: false, error: "Bot token or Chat ID is missing." };
+  }
+
+  let text = "";
+  if (isTest) {
+    text = `📡 <b>BountyRadar Connected!</b>\n\n` +
+      `Your Telegram alert webhook integration is working properly.\n` +
+      `You will receive immediate alerts whenever newly launched bug bounty programs or updated scopes are detected.`;
+  } else {
+    if (!programs || programs.length === 0) return { ok: true };
+    const count = programs.length;
+    text = `🚨 <b>BountyRadar Discovery Alert</b>\n` +
+      `Found <b>${count}</b> newly discovered bug bounty program${count > 1 ? "s" : ""}!\n\n`;
+
+    const sample = programs.slice(0, 5);
+    sample.forEach((p, idx) => {
+      const type = p.hasBounty ? "💰 Bounty" : "🎯 VDP";
+      const host = p.isSelfHosted ? "🌐 Self-Hosted" : `🏢 ${escapeHtml(p.platform)}`;
+      const name = escapeHtml(p.name || "Unknown");
+      const url = escapeHtml(p.url || "#");
+      text += `${idx + 1}. <b><a href="${url}">${name}</a></b>\n`;
+      text += `• Type: ${type} | ${host}\n`;
+      if (p.domains && p.domains.length > 0) {
+        const topDomains = escapeHtml(p.domains.slice(0, 3).join(", "));
+        text += `• In-Scope: <code>${topDomains}</code>\n`;
+      }
+      text += `\n`;
+    });
+
+    if (count > 5) {
+      text += `<i>...and ${count - 5} more programs available in BountyRadar.</i>`;
+    }
+  }
+
+  try {
+    const res = await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        chat_id: chatId,
+        text: text,
+        parse_mode: "HTML",
+        disable_web_page_preview: true
+      })
+    });
+    const result = await res.json();
+    if (!res.ok || !result.ok) {
+      const errMsg = result.description || `HTTP ${res.status}`;
+      console.warn("Telegram alert failed:", errMsg);
+      return { ok: false, error: errMsg };
+    }
+    return { ok: true };
+  } catch (err) {
+    console.error("Error sending Telegram alert:", err);
+    return { ok: false, error: String(err.message || err) };
+  }
+}
+
+async function sendEmailAlert(apiKey, toEmail, programs, isTest = false) {
+  if (!apiKey || !toEmail) {
+    return { ok: false, error: "Resend API key or recipient email is missing." };
+  }
+
+  let subject = "";
+  let html = "";
+
+  if (isTest) {
+    subject = "[BountyRadar] 📡 Alert Notification Test";
+    html = `
+      <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 580px; padding: 24px; background: #0b1120; color: #e2e8f0; border-radius: 8px; border: 1px solid rgba(56, 189, 248, 0.3);">
+        <h2 style="color: #38bdf8; margin-top: 0;">📡 BountyRadar Connected!</h2>
+        <p>Your email notification integration via Resend is working properly.</p>
+        <p style="color: #94a3b8;">You will receive automated digest alerts whenever fresh bug bounty targets and newly published VDP scopes are detected.</p>
+        <hr style="border: 0; border-top: 1px solid rgba(255,255,255,0.1); margin: 20px 0;" />
+        <small style="color: #64748b;">BountyRadar Autonomous Discovery Engine</small>
+      </div>
+    `;
+  } else {
+    if (!programs || programs.length === 0) return { ok: true };
+    const count = programs.length;
+    subject = `[BountyRadar] 🔥 ${count} New Bug Bounty Programs Discovered`;
+    let itemsHtml = "";
+    programs.slice(0, 8).forEach((p) => {
+      const type = p.hasBounty ? "💰 Bounty" : "🎯 VDP";
+      const host = p.isSelfHosted ? "🌐 Self-Hosted" : escapeHtml(p.platform);
+      const name = escapeHtml(p.name || "Unknown");
+      const url = escapeHtml(p.url || "#");
+      const domains = p.domains && p.domains.length > 0 ? escapeHtml(p.domains.slice(0, 3).join(", ")) : "Listed in policy";
+      itemsHtml += `
+        <li style="margin-bottom: 14px; background: #131b2e; padding: 12px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.06);">
+          <strong style="font-size: 15px;"><a href="${url}" style="color: #38bdf8; text-decoration: none;">${name}</a></strong>
+          <span style="color: #94a3b8; font-size: 12px; margin-left: 8px;">(${host})</span><br/>
+          <span style="display: inline-block; margin-top: 4px; font-size: 12px; color: #10b981;">${type}</span><br/>
+          <code style="background: rgba(0,0,0,0.3); color: #cbd5e1; padding: 2px 6px; border-radius: 4px; font-size: 12px;">${domains}</code>
+        </li>
+      `;
+    });
+
+    html = `
+      <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 580px; padding: 24px; background: #0b1120; color: #e2e8f0; border-radius: 8px;">
+        <h2 style="color: #38bdf8; margin-top: 0;">🚨 Fresh Bug Bounty Targets Found</h2>
+        <p>BountyRadar detected <strong>${count}</strong> newly added or escalated programs:</p>
+        <ul style="list-style: none; padding-left: 0;">
+          ${itemsHtml}
+        </ul>
+        ${count > 8 ? `<p style="color: #94a3b8;"><em>...plus ${count - 8} more programs available in the BountyRadar extension.</em></p>` : ""}
+        <hr style="border: 0; border-top: 1px solid rgba(255,255,255,0.1); margin: 20px 0;" />
+        <small style="color: #64748b;">BountyRadar Autonomous Discovery Engine</small>
+      </div>
+    `;
+  }
+
+  try {
+    const res = await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${apiKey}`,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        from: "BountyRadar Alerts <onboarding@resend.dev>",
+        to: [toEmail],
+        subject: subject,
+        html: html
+      })
+    });
+    const result = await res.json();
+    if (!res.ok) {
+      const errMsg = result.message || `HTTP ${res.status}`;
+      console.warn("Resend email alert failed:", errMsg);
+      return { ok: false, error: errMsg };
+    }
+    return { ok: true };
+  } catch (err) {
+    console.error("Error sending email alert:", err);
+    return { ok: false, error: String(err.message || err) };
+  }
+}
+
 async function syncFeeds(isPeriodic = false) {
   if (isSyncing) return { status: "already_syncing" };
   isSyncing = true;
@@ -291,17 +453,34 @@ async function syncFeeds(isPeriodic = false) {
 
     await updateBadge(totalNewCount);
 
-    if (totalNewCount > 0 && settings.notifications && chrome.notifications) {
-      const msg = newSelfHostedCount > 0
-        ? `Found ${totalNewCount} new bug bounty programs (${newSelfHostedCount} self-hosted)!`
-        : `Found ${totalNewCount} new bug bounty programs!`;
+    if (totalNewCount > 0) {
+      if (settings.notifications && chrome.notifications) {
+        const msg = newSelfHostedCount > 0
+          ? `Found ${totalNewCount} new bug bounty programs (${newSelfHostedCount} self-hosted)!`
+          : `Found ${totalNewCount} new bug bounty programs!`;
 
-      chrome.notifications.create({
-        type: "basic",
-        iconUrl: "icons/icon128.png",
-        title: "BountyRadar Discovery",
-        message: msg
-      });
+        chrome.notifications.create({
+          type: "basic",
+          iconUrl: "icons/icon128.png",
+          title: "BountyRadar Discovery",
+          message: msg
+        });
+      }
+
+      // External Push Alerts (Telegram & Email)
+      if (!isFirstRun) {
+        const freshList = updatedPrograms.filter((p) => p.isNew);
+        if (settings.telegram?.enabled && settings.telegram?.botToken && settings.telegram?.chatId) {
+          sendTelegramAlert(settings.telegram.botToken, settings.telegram.chatId, freshList).catch((err) => {
+            console.debug("Background Telegram alert failed:", err);
+          });
+        }
+        if (settings.email?.enabled && settings.email?.apiKey && settings.email?.toEmail) {
+          sendEmailAlert(settings.email.apiKey, settings.email.toEmail, freshList).catch((err) => {
+            console.debug("Background Email alert failed:", err);
+          });
+        }
+      }
     }
 
     // Also run auto-update check during periodic sync
@@ -426,6 +605,32 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
       }
       await chrome.storage.local.set({ [STORAGE_KEYS.NOTES]: updated });
       sendResponse({ ok: true, notes: updated });
+    });
+    return true;
+  }
+
+  if (msg.type === "BOUNTYRADAR_SAVE_SETTINGS") {
+    getStorageData().then(async ({ settings: currentSettings }) => {
+      const newSettings = {
+        ...currentSettings,
+        ...(msg.settings || {})
+      };
+      await chrome.storage.local.set({ [STORAGE_KEYS.SETTINGS]: newSettings });
+      sendResponse({ ok: true, settings: newSettings });
+    });
+    return true;
+  }
+
+  if (msg.type === "BOUNTYRADAR_TEST_TELEGRAM") {
+    sendTelegramAlert(msg.botToken, msg.chatId, null, true).then((res) => {
+      sendResponse(res);
+    });
+    return true;
+  }
+
+  if (msg.type === "BOUNTYRADAR_TEST_EMAIL") {
+    sendEmailAlert(msg.apiKey, msg.toEmail, null, true).then((res) => {
+      sendResponse(res);
     });
     return true;
   }

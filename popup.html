@@ -95,6 +95,14 @@
           </button>
         </div>
       </div>
+
+      <!-- Settings & Alert Webhooks Button -->
+      <button id="settings-btn" class="action-btn icon-only-action" title="Webhook & Notification Settings">
+        <svg class="action-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="3"></circle>
+          <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+        </svg>
+      </button>
     </div>
   </header>
 
@@ -247,6 +255,110 @@
       <a href="https://github.com/tejassroot/BountyRadar" target="_blank" rel="noopener noreferrer" class="footer-github-link" title="View Source on GitHub">GitHub ↗</a>
     </div>
   </footer>
+
+  <!-- Settings & Webhook Alerts Modal -->
+  <div id="settings-modal" class="modal-backdrop hidden">
+    <div class="modal-card">
+      <div class="modal-header">
+        <div class="modal-title-group">
+          <span class="modal-icon">⚙️</span>
+          <div>
+            <h2 class="modal-title">Push Alerts & Webhooks</h2>
+            <p class="modal-subtitle">Get instant notifications when fresh bug bounty scopes launch</p>
+          </div>
+        </div>
+        <button id="settings-close-btn" class="modal-close" title="Close Settings">✕</button>
+      </div>
+
+      <div class="modal-body">
+        <!-- Telegram Configuration Section -->
+        <div class="settings-section">
+          <div class="settings-section-header">
+            <div class="section-title-wrap">
+              <span class="service-logo">✈️</span>
+              <div>
+                <span class="section-title">Telegram Push Alerts</span>
+                <span class="badge-free">FREE • ZERO-SERVER</span>
+              </div>
+            </div>
+            <label class="switch">
+              <input type="checkbox" id="setting-tg-enabled">
+              <span class="slider"></span>
+            </label>
+          </div>
+
+          <div class="settings-fields" id="tg-fields-group">
+            <div class="field-item">
+              <label for="setting-tg-token">Bot Token</label>
+              <div class="input-with-action">
+                <input type="password" id="setting-tg-token" class="cyber-input" placeholder="e.g. 7123456789:AAHfdk_..." autocomplete="off">
+                <button type="button" id="tg-toggle-visibility" class="btn-toggle-eye" title="Show/Hide Token">👁️</button>
+              </div>
+              <span class="field-tip">Create a bot via <a href="https://t.me/BotFather" target="_blank" rel="noopener">@BotFather</a> to get your token.</span>
+            </div>
+
+            <div class="field-item">
+              <label for="setting-tg-chatid">Your Chat ID</label>
+              <input type="text" id="setting-tg-chatid" class="cyber-input" placeholder="e.g. 123456789">
+              <span class="field-tip">Send /start to your bot, then message <a href="https://t.me/userinfobot" target="_blank" rel="noopener">@userinfobot</a> for your ID.</span>
+            </div>
+
+            <div class="test-row">
+              <button id="btn-test-telegram" class="btn-test-action" type="button">
+                <span>Ping Telegram Test</span>
+              </button>
+              <span id="tg-test-status" class="test-status"></span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Email Configuration Section -->
+        <div class="settings-section">
+          <div class="settings-section-header">
+            <div class="section-title-wrap">
+              <span class="service-logo">✉️</span>
+              <div>
+                <span class="section-title">Email Digest Alerts</span>
+                <span class="badge-free">RESEND API</span>
+              </div>
+            </div>
+            <label class="switch">
+              <input type="checkbox" id="setting-email-enabled">
+              <span class="slider"></span>
+            </label>
+          </div>
+
+          <div class="settings-fields" id="email-fields-group">
+            <div class="field-item">
+              <label for="setting-email-key">Resend API Key</label>
+              <div class="input-with-action">
+                <input type="password" id="setting-email-key" class="cyber-input" placeholder="re_12345678_..." autocomplete="off">
+                <button type="button" id="email-toggle-visibility" class="btn-toggle-eye" title="Show/Hide Key">👁️</button>
+              </div>
+              <span class="field-tip">Free 3,000 emails/month from <a href="https://resend.com" target="_blank" rel="noopener">resend.com</a>.</span>
+            </div>
+
+            <div class="field-item">
+              <label for="setting-email-to">Destination Email</label>
+              <input type="email" id="setting-email-to" class="cyber-input" placeholder="researcher@domain.com">
+            </div>
+
+            <div class="test-row">
+              <button id="btn-test-email" class="btn-test-action" type="button">
+                <span>Send Test Email</span>
+              </button>
+              <span id="email-test-status" class="test-status"></span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button id="settings-cancel-btn" class="modal-btn-cancel" type="button">Cancel</button>
+        <button id="settings-save-btn" class="modal-btn-save" type="button">Save Settings</button>
+      </div>
+    </div>
+  </div>
 
   <script src="popup.js"></script>
 </body>

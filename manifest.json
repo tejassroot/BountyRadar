@@ -4,7 +4,11 @@
   "version": "1.2.0",
   "description": "Autonomously discovers newly published, self-hosted, and unlisted bug bounty programs without having to visit websites.",
   "permissions": ["storage", "unlimitedStorage", "alarms", "notifications", "tabs"],
-  "host_permissions": ["https://raw.githubusercontent.com/*"],
+  "host_permissions": [
+    "https://raw.githubusercontent.com/*",
+    "https://api.telegram.org/*",
+    "https://api.resend.com/*"
+  ],
   "background": {
     "service_worker": "background.js",
     "scripts": ["feeds.js", "background.js"]

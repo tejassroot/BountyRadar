@@ -64,6 +64,34 @@ const activeTabDomains = document.getElementById("active-tab-domains");
 const activeTabCopyBtn = document.getElementById("active-tab-copy-btn");
 const activeTabPolicyLink = document.getElementById("active-tab-policy-link");
 
+// Settings & Webhooks Modal Elements
+const settingsBtn = document.getElementById("settings-btn");
+const settingsModal = document.getElementById("settings-modal");
+const settingsCloseBtn = document.getElementById("settings-close-btn");
+const settingsCancelBtn = document.getElementById("settings-cancel-btn");
+const settingsSaveBtn = document.getElementById("settings-save-btn");
+const settingTgEnabled = document.getElementById("setting-tg-enabled");
+const settingTgToken = document.getElementById("setting-tg-token");
+const settingTgChatId = document.getElementById("setting-tg-chatid");
+const tgToggleVisibility = document.getElementById("tg-toggle-visibility");
+const btnTestTelegram = document.getElementById("btn-test-telegram");
+const tgTestStatus = document.getElementById("tg-test-status");
+const tgFieldsGroup = document.getElementById("tg-fields-group");
+const settingEmailEnabled = document.getElementById("setting-email-enabled");
+const settingEmailKey = document.getElementById("setting-email-key");
+const settingEmailTo = document.getElementById("setting-email-to");
+const emailToggleVisibility = document.getElementById("email-toggle-visibility");
+const btnTestEmail = document.getElementById("btn-test-email");
+const emailTestStatus = document.getElementById("email-test-status");
+const emailFieldsGroup = document.getElementById("email-fields-group");
+
+let currentSettings = {
+  syncIntervalMinutes: 360,
+  notifications: true,
+  telegram: { enabled: false, botToken: "", chatId: "" },
+  email: { enabled: false, apiKey: "", toEmail: "" }
+};
+
 // Metrics Counters
 const statTotalEl = document.getElementById("stat-total");
 const statTargetsEl = document.getElementById("stat-targets");
@@ -776,6 +804,9 @@ async function refreshState() {
       state.lastSync = res.lastSync || 0;
       state.newCount = res.newCount || 0;
       state.isSyncing = res.isSyncing || false;
+      if (res.settings) {
+        currentSettings = { ...currentSettings, ...res.settings };
+      }
 
       updateMetrics();
       renderUpdateBanner();
@@ -919,6 +950,257 @@ if (ghFooterLink) {
   ghFooterLink.addEventListener("click", (e) => {
     e.preventDefault();
     openExternalUrl("https://github.com/tejassroot/BountyRadar");
+  });
+}
+
+// ==========================================================================
+// Settings & Alert Webhooks Management
+// ==========================================================================
+
+function maskSecret(val) {
+  if (!val || typeof val !== "string") return "";
+  if (val.length <= 6) return "••••••";
+  return val.slice(0, 4) + "••••••••" + val.slice(-2);
+}
+
+function updateSettingsFieldsState() {
+  if (!tgFieldsGroup || !emailFieldsGroup) return;
+  if (settingTgEnabled && settingTgEnabled.checked) {
+    tgFieldsGroup.classList.remove("disabled");
+  } else if (tgFieldsGroup) {
+    tgFieldsGroup.classList.add("disabled");
+  }
+
+  if (settingEmailEnabled && settingEmailEnabled.checked) {
+    emailFieldsGroup.classList.remove("disabled");
+  } else if (emailFieldsGroup) {
+    emailFieldsGroup.classList.add("disabled");
+  }
+}
+
+function openSettingsModal() {
+  if (!settingsModal) return;
+  if (settingTgEnabled) settingTgEnabled.checked = Boolean(currentSettings.telegram?.enabled);
+  if (settingTgToken) {
+    settingTgToken.value = "";
+    settingTgToken.placeholder = currentSettings.telegram?.botToken
+      ? maskSecret(currentSettings.telegram.botToken)
+      : "e.g. 7123456789:AAHfdk_...";
+  }
+  if (settingTgChatId) settingTgChatId.value = currentSettings.telegram?.chatId || "";
+
+  if (settingEmailEnabled) settingEmailEnabled.checked = Boolean(currentSettings.email?.enabled);
+  if (settingEmailKey) {
+    settingEmailKey.value = "";
+    settingEmailKey.placeholder = currentSettings.email?.apiKey
+      ? maskSecret(currentSettings.email.apiKey)
+      : "re_12345678_...";
+  }
+  if (settingEmailTo) settingEmailTo.value = currentSettings.email?.toEmail || "";
+
+  updateSettingsFieldsState();
+  if (tgTestStatus) {
+    tgTestStatus.textContent = "";
+    tgTestStatus.className = "test-status";
+  }
+  if (emailTestStatus) {
+    emailTestStatus.textContent = "";
+    emailTestStatus.className = "test-status";
+  }
+  settingsModal.classList.remove("hidden");
+}
+
+function closeSettingsModal() {
+  if (settingsModal) settingsModal.classList.add("hidden");
+}
+
+if (settingsBtn) {
+  settingsBtn.addEventListener("click", () => {
+    openSettingsModal();
+  });
+}
+
+if (settingsCloseBtn) {
+  settingsCloseBtn.addEventListener("click", () => {
+    closeSettingsModal();
+  });
+}
+
+if (settingsCancelBtn) {
+  settingsCancelBtn.addEventListener("click", () => {
+    closeSettingsModal();
+  });
+}
+
+if (settingsModal) {
+  settingsModal.addEventListener("click", (e) => {
+    if (e.target === settingsModal) {
+      closeSettingsModal();
+    }
+  });
+}
+
+if (settingTgEnabled) {
+  settingTgEnabled.addEventListener("change", () => {
+    updateSettingsFieldsState();
+  });
+}
+
+if (settingEmailEnabled) {
+  settingEmailEnabled.addEventListener("change", () => {
+    updateSettingsFieldsState();
+  });
+}
+
+if (tgToggleVisibility && settingTgToken) {
+  tgToggleVisibility.addEventListener("click", () => {
+    settingTgToken.type = settingTgToken.type === "password" ? "text" : "password";
+  });
+}
+
+if (emailToggleVisibility && settingEmailKey) {
+  emailToggleVisibility.addEventListener("click", () => {
+    settingEmailKey.type = settingEmailKey.type === "password" ? "text" : "password";
+  });
+}
+
+// Save Settings Handler
+if (settingsSaveBtn) {
+  settingsSaveBtn.addEventListener("click", async () => {
+    const enteredTgToken = settingTgToken ? settingTgToken.value.trim() : "";
+    const enteredEmailKey = settingEmailKey ? settingEmailKey.value.trim() : "";
+
+    const updatedSettings = {
+      ...currentSettings,
+      telegram: {
+        enabled: settingTgEnabled ? settingTgEnabled.checked : false,
+        botToken: enteredTgToken ? enteredTgToken : (currentSettings.telegram?.botToken || ""),
+        chatId: settingTgChatId ? settingTgChatId.value.trim() : ""
+      },
+      email: {
+        enabled: settingEmailEnabled ? settingEmailEnabled.checked : false,
+        apiKey: enteredEmailKey ? enteredEmailKey : (currentSettings.email?.apiKey || ""),
+        toEmail: settingEmailTo ? settingEmailTo.value.trim() : ""
+      }
+    };
+
+    try {
+      const res = await chrome.runtime.sendMessage({
+        type: "BOUNTYRADAR_SAVE_SETTINGS",
+        settings: updatedSettings
+      });
+
+      if (res && res.ok) {
+        currentSettings = res.settings;
+        showToast("Push alert settings saved successfully!", "✓");
+        closeSettingsModal();
+      } else {
+        showToast("Error saving settings", "✕");
+      }
+    } catch (err) {
+      console.error("Save settings error:", err);
+      showToast("Failed to save settings", "✕");
+    }
+  });
+}
+
+// Telegram Test Ping Handler
+if (btnTestTelegram) {
+  btnTestTelegram.addEventListener("click", async () => {
+    const token = (settingTgToken ? settingTgToken.value.trim() : "") || currentSettings.telegram?.botToken;
+    const chatId = (settingTgChatId ? settingTgChatId.value.trim() : "") || currentSettings.telegram?.chatId;
+
+    if (!token || !chatId) {
+      if (tgTestStatus) {
+        tgTestStatus.textContent = "Please provide both Bot Token and Chat ID.";
+        tgTestStatus.className = "test-status error";
+      }
+      return;
+    }
+
+    btnTestTelegram.disabled = true;
+    if (tgTestStatus) {
+      tgTestStatus.textContent = "Sending test ping...";
+      tgTestStatus.className = "test-status";
+    }
+
+    try {
+      const res = await chrome.runtime.sendMessage({
+        type: "BOUNTYRADAR_TEST_TELEGRAM",
+        botToken: token,
+        chatId: chatId
+      });
+
+      if (res && res.ok) {
+        if (tgTestStatus) {
+          tgTestStatus.textContent = "✓ Connected! Message received in Telegram.";
+          tgTestStatus.className = "test-status success";
+        }
+        showToast("Telegram Ping Delivered!", "✈️");
+      } else {
+        if (tgTestStatus) {
+          tgTestStatus.textContent = `✕ Failed: ${res?.error || "Check bot token/chat ID"}`;
+          tgTestStatus.className = "test-status error";
+        }
+      }
+    } catch (err) {
+      if (tgTestStatus) {
+        tgTestStatus.textContent = `✕ Network error: ${err.message || err}`;
+        tgTestStatus.className = "test-status error";
+      }
+    } finally {
+      btnTestTelegram.disabled = false;
+    }
+  });
+}
+
+// Email Test Handler
+if (btnTestEmail) {
+  btnTestEmail.addEventListener("click", async () => {
+    const apiKey = (settingEmailKey ? settingEmailKey.value.trim() : "") || currentSettings.email?.apiKey;
+    const toEmail = (settingEmailTo ? settingEmailTo.value.trim() : "") || currentSettings.email?.toEmail;
+
+    if (!apiKey || !toEmail) {
+      if (emailTestStatus) {
+        emailTestStatus.textContent = "Please provide both Resend API Key and Destination Email.";
+        emailTestStatus.className = "test-status error";
+      }
+      return;
+    }
+
+    btnTestEmail.disabled = true;
+    if (emailTestStatus) {
+      emailTestStatus.textContent = "Sending test email...";
+      emailTestStatus.className = "test-status";
+    }
+
+    try {
+      const res = await chrome.runtime.sendMessage({
+        type: "BOUNTYRADAR_TEST_EMAIL",
+        apiKey: apiKey,
+        toEmail: toEmail
+      });
+
+      if (res && res.ok) {
+        if (emailTestStatus) {
+          emailTestStatus.textContent = "✓ Sent! Check your inbox.";
+          emailTestStatus.className = "test-status success";
+        }
+        showToast("Test Email Delivered!", "✉️");
+      } else {
+        if (emailTestStatus) {
+          emailTestStatus.textContent = `✕ Failed: ${res?.error || "Check Resend API key"}`;
+          emailTestStatus.className = "test-status error";
+        }
+      }
+    } catch (err) {
+      if (emailTestStatus) {
+        emailTestStatus.textContent = `✕ Network error: ${err.message || err}`;
+        emailTestStatus.className = "test-status error";
+      }
+    } finally {
+      btnTestEmail.disabled = false;
+    }
   });
 }
 
