@@ -3,6 +3,10 @@
     "bountyradar@tejassroot.github.io": {
       "updates": [
         {
+          "version": "1.4.0",
+          "update_link": "https://raw.githubusercontent.com/tejassroot/BountyRadar/main/dist/bountyradar-latest.zip"
+        },
+        {
           "version": "1.3.0",
           "update_link": "https://raw.githubusercontent.com/tejassroot/BountyRadar/main/dist/bountyradar-latest.zip"
         },

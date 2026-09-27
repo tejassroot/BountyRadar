@@ -1236,6 +1236,153 @@ body {
 }
 
 /* ==========================================================================
+   Active Tab RFC 9116 security.txt Sniffer Styling
+   ========================================================================== */
+.active-tab-card.is-sectxt-mode {
+  background: linear-gradient(135deg, rgba(2, 132, 199, 0.18) 0%, rgba(14, 165, 233, 0.08) 100%);
+  border: 1px solid rgba(2, 132, 199, 0.5);
+  box-shadow: 0 0 20px rgba(2, 132, 199, 0.25);
+}
+
+.active-tab-card.is-sectxt-mode .sonar-core {
+  background: #0284c7;
+  box-shadow: 0 0 10px #38bdf8;
+}
+
+.active-tab-card.is-sectxt-mode .sonar-ring {
+  border-color: #0284c7;
+}
+
+.active-tab-card.is-sectxt-mode .active-tab-pill {
+  color: #38bdf8;
+}
+
+.badge-sectxt {
+  background: rgba(2, 132, 199, 0.2) !important;
+  color: #38bdf8 !important;
+  border: 1px solid rgba(2, 132, 199, 0.4) !important;
+}
+
+.btn-save-target {
+  border: 1px solid rgba(245, 158, 11, 0.5);
+  background: rgba(245, 158, 11, 0.15);
+  color: #fbbf24;
+}
+
+.btn-save-target:hover {
+  background: rgba(245, 158, 11, 0.3);
+  box-shadow: 0 0 10px rgba(245, 158, 11, 0.4);
+}
+
+.btn-save-target.is-saved {
+  background: #f59e0b;
+  color: #070b14;
+  font-weight: 700;
+  border-color: #f59e0b;
+}
+
+.active-tab-sectxt-details {
+  margin-top: 4px;
+  padding: 8px 10px;
+  background: rgba(0, 0, 0, 0.4);
+  border: 1px solid rgba(2, 132, 199, 0.25);
+  border-radius: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.sectxt-meta-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  padding-bottom: 4px;
+}
+
+.sectxt-header-title {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: #38bdf8;
+}
+
+.btn-sectxt-raw {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: #94a3b8;
+  font-size: 9px;
+  padding: 1px 6px;
+  border-radius: 3px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.btn-sectxt-raw:hover {
+  background: rgba(2, 132, 199, 0.3);
+  color: #fff;
+  border-color: #0284c7;
+}
+
+.sectxt-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.sectxt-item {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  font-size: 11px;
+}
+
+.sectxt-label {
+  font-weight: 700;
+  color: #64748b;
+  width: 85px;
+  flex-shrink: 0;
+  font-size: 10px;
+  text-transform: uppercase;
+}
+
+.sectxt-val {
+  color: #e2e8f0;
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  word-break: break-all;
+}
+
+.sectxt-val a,
+.sectxt-link {
+  color: #38bdf8;
+  text-decoration: none;
+  font-weight: 600;
+  transition: color 0.15s;
+}
+
+.sectxt-val a:hover,
+.sectxt-link:hover {
+  color: #7dd3fc;
+  text-decoration: underline;
+}
+
+.sectxt-badge-expired {
+  color: #ef4444;
+  font-weight: 700;
+  margin-left: 6px;
+  font-size: 9px;
+}
+
+.sectxt-badge-valid {
+  color: #10b981;
+  font-weight: 600;
+  margin-left: 6px;
+  font-size: 9px;
+}
+
+/* ==========================================================================
    Bookmark & Private Recon Notes
    ========================================================================== */
 .card-tools {

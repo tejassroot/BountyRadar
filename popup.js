@@ -58,11 +58,28 @@ const updateDismissBtn = document.getElementById("update-dismiss-btn");
 
 // Active Tab Sniffer Elements
 const activeTabBanner = document.getElementById("active-tab-banner");
-const activeTabName = document.getElementById("active-tab-name");
+const activeTabPulse = document.getElementById("active-tab-pulse");
+const activeTabPill = document.getElementById("active-tab-pill");
 const activeTabReward = document.getElementById("active-tab-reward");
-const activeTabDomains = document.getElementById("active-tab-domains");
+const activeTabVerifiedBadge = document.getElementById("active-tab-verified-badge");
+const activeTabName = document.getElementById("active-tab-name");
 const activeTabCopyBtn = document.getElementById("active-tab-copy-btn");
+const activeTabSaveBtn = document.getElementById("active-tab-save-btn");
 const activeTabPolicyLink = document.getElementById("active-tab-policy-link");
+const activeTabDomains = document.getElementById("active-tab-domains");
+const activeTabSectxtDetails = document.getElementById("active-tab-sectxt-details");
+const activeTabRawSectxtBtn = document.getElementById("active-tab-raw-sectxt-btn");
+const sectxtContacts = document.getElementById("sectxt-contacts");
+const sectxtPgpItem = document.getElementById("sectxt-pgp-item");
+const sectxtPgpLink = document.getElementById("sectxt-pgp-link");
+const sectxtPolicyItem = document.getElementById("sectxt-policy-item");
+const sectxtPolicyLink = document.getElementById("sectxt-policy-link");
+const sectxtHofItem = document.getElementById("sectxt-hof-item");
+const sectxtHofLink = document.getElementById("sectxt-hof-link");
+const sectxtHiringItem = document.getElementById("sectxt-hiring-item");
+const sectxtHiringLink = document.getElementById("sectxt-hiring-link");
+const sectxtExpiresItem = document.getElementById("sectxt-expires-item");
+const sectxtExpires = document.getElementById("sectxt-expires");
 
 // Settings & Webhooks Modal Elements
 const settingsBtn = document.getElementById("settings-btn");
@@ -280,44 +297,277 @@ function openExternalUrl(url) {
   }
 }
 
-function renderActiveTabBanner(host, prog) {
-  if (!prog || !activeTabBanner) return;
-  activeTabBanner.classList.remove("hidden");
-  activeTabName.textContent = prog.name;
-  activeTabReward.textContent = prog.hasBounty ? (prog.maxReward || "Bounty") : "VDP";
-  activeTabReward.className = `badge ${prog.hasBounty ? "badge-bounty" : "badge-vdp"}`;
+function renderSecurityTxtDirectives(secTxt) {
+  if (!secTxt || !activeTabSectxtDetails) return;
+  activeTabSectxtDetails.classList.remove("hidden");
 
-  activeTabPolicyLink.href = prog.url || "#";
-  activeTabPolicyLink.title = `Open ${prog.name} rules & policy`;
-  activeTabPolicyLink.onclick = (e) => {
-    e.preventDefault();
-    if (prog.url) {
-      openExternalUrl(prog.url);
+  // Contacts
+  if (sectxtContacts) {
+    sectxtContacts.replaceChildren();
+    if (Array.isArray(secTxt.contacts) && secTxt.contacts.length > 0) {
+      secTxt.contacts.forEach((contact, idx) => {
+        if (idx > 0) {
+          const sep = document.createTextNode(" • ");
+          sectxtContacts.appendChild(sep);
+        }
+        const cleanContact = contact.trim();
+        if (cleanContact.startsWith("mailto:") || cleanContact.startsWith("http")) {
+          const a = document.createElement("a");
+          a.href = cleanContact;
+          a.target = "_blank";
+          a.rel = "noopener noreferrer";
+          a.textContent = cleanContact.replace(/^mailto:/, "");
+          a.onclick = (e) => {
+            e.preventDefault();
+            openExternalUrl(cleanContact);
+          };
+          sectxtContacts.appendChild(a);
+        } else {
+          const span = document.createElement("span");
+          span.textContent = cleanContact;
+          sectxtContacts.appendChild(span);
+        }
+      });
     } else {
-      showToast("No policy URL found for active tab", "⚠️");
-    }
-  };
-
-  activeTabDomains.replaceChildren();
-  if (Array.isArray(prog.domains)) {
-    for (const d of prog.domains.slice(0, 4)) {
-      const code = document.createElement("code");
-      code.textContent = d;
-      activeTabDomains.appendChild(code);
-    }
-    if (prog.domains.length > 4) {
-      const more = document.createElement("span");
-      more.textContent = `+${prog.domains.length - 4} more`;
-      more.style.color = "var(--text-muted)";
-      activeTabDomains.appendChild(more);
+      sectxtContacts.textContent = "None specified";
     }
   }
 
-  activeTabCopyBtn.onclick = () => {
-    navigator.clipboard.writeText((prog.domains || []).join("\n")).then(() => {
-      showToast(`Copied ${prog.domains.length} in-scope domains!`, "📋");
-    });
-  };
+  // PGP Key / Encryption
+  if (sectxtPgpItem && sectxtPgpLink) {
+    if (secTxt.encryption) {
+      sectxtPgpItem.classList.remove("hidden");
+      sectxtPgpLink.href = secTxt.encryption;
+      sectxtPgpLink.onclick = (e) => {
+        e.preventDefault();
+        openExternalUrl(secTxt.encryption);
+      };
+    } else {
+      sectxtPgpItem.classList.add("hidden");
+    }
+  }
+
+  // Policy
+  if (sectxtPolicyItem && sectxtPolicyLink) {
+    if (secTxt.policy) {
+      sectxtPolicyItem.classList.remove("hidden");
+      sectxtPolicyLink.href = secTxt.policy;
+      sectxtPolicyLink.onclick = (e) => {
+        e.preventDefault();
+        openExternalUrl(secTxt.policy);
+      };
+    } else {
+      sectxtPolicyItem.classList.add("hidden");
+    }
+  }
+
+  // Hall of Fame / Acknowledgments
+  if (sectxtHofItem && sectxtHofLink) {
+    if (secTxt.acknowledgments) {
+      sectxtHofItem.classList.remove("hidden");
+      sectxtHofLink.href = secTxt.acknowledgments;
+      sectxtHofLink.onclick = (e) => {
+        e.preventDefault();
+        openExternalUrl(secTxt.acknowledgments);
+      };
+    } else {
+      sectxtHofItem.classList.add("hidden");
+    }
+  }
+
+  // Hiring
+  if (sectxtHiringItem && sectxtHiringLink) {
+    if (secTxt.hiring) {
+      sectxtHiringItem.classList.remove("hidden");
+      sectxtHiringLink.href = secTxt.hiring;
+      sectxtHiringLink.onclick = (e) => {
+        e.preventDefault();
+        openExternalUrl(secTxt.hiring);
+      };
+    } else {
+      sectxtHiringItem.classList.add("hidden");
+    }
+  }
+
+  // Expires
+  if (sectxtExpiresItem && sectxtExpires) {
+    if (secTxt.expires) {
+      sectxtExpiresItem.classList.remove("hidden");
+      sectxtExpires.replaceChildren();
+
+      const dateText = document.createTextNode(secTxt.expires.slice(0, 10));
+      sectxtExpires.appendChild(dateText);
+
+      const statusBadge = document.createElement("span");
+      if (secTxt.isExpired) {
+        statusBadge.className = "sectxt-badge-expired";
+        statusBadge.textContent = "⚠️ EXPIRED";
+      } else {
+        statusBadge.className = "sectxt-badge-valid";
+        statusBadge.textContent = "✓ ACTIVE";
+      }
+      sectxtExpires.appendChild(statusBadge);
+    } else {
+      sectxtExpiresItem.classList.add("hidden");
+    }
+  }
+
+  // Raw file copy button
+  if (activeTabRawSectxtBtn) {
+    activeTabRawSectxtBtn.onclick = (e) => {
+      e.preventDefault();
+      if (secTxt.raw) {
+        navigator.clipboard.writeText(secTxt.raw).then(() => {
+          showToast("Copied raw security.txt!", "📋");
+        });
+      }
+    };
+  }
+}
+
+function renderActiveTabBanner(host, target) {
+  if (!target || !activeTabBanner) return;
+  activeTabBanner.classList.remove("hidden");
+
+  const cleanHost = (host || "").toLowerCase().trim();
+
+  if (target.isSecurityTxt) {
+    // Unlisted RFC 9116 security.txt target mode
+    activeTabBanner.classList.add("is-sectxt-mode");
+    if (activeTabPill) activeTabPill.textContent = "📜 RFC 9116 VDP DETECTED";
+    if (activeTabVerifiedBadge) activeTabVerifiedBadge.classList.add("hidden");
+
+    activeTabName.textContent = host;
+    activeTabReward.textContent = "Unlisted VDP";
+    activeTabReward.className = "badge badge-vdp";
+
+    const targetId = `sectxt_${cleanHost.replace(/^www\./, "")}`;
+    const isBookmarked = state.bookmarks.includes(targetId) || (target.id && state.bookmarks.includes(target.id));
+
+    if (activeTabSaveBtn) {
+      activeTabSaveBtn.classList.remove("hidden");
+      activeTabSaveBtn.textContent = isBookmarked ? "★ Saved Target" : "⭐ Save Target";
+      activeTabSaveBtn.classList.toggle("is-saved", isBookmarked);
+      activeTabSaveBtn.title = isBookmarked ? "Target saved in BountyRadar Bookmarks" : "Save this target to Bookmarks";
+
+      activeTabSaveBtn.onclick = async () => {
+        const sec = target.securityTxt || {};
+        const customTarget = {
+          id: targetId,
+          name: host,
+          url: sec.policy || (sec.contacts && sec.contacts[0]) || `https://${host}/.well-known/security.txt`,
+          platform: "Self-Hosted",
+          isSelfHosted: true,
+          hasBounty: false,
+          maxReward: "VDP",
+          isWildcard: true,
+          isTargetAsset: false,
+          domains: [`*.${cleanHost.replace(/^www\./, "")}`, cleanHost],
+          tags: ["security.txt", "vdp", "rfc9116", "self-hosted"],
+          country: { code: "GL", name: "Global / Discovered", flag: "🌐" },
+          isSecurityTxt: true,
+          securityTxt: sec,
+          discoveredAt: Date.now()
+        };
+
+        if (isBookmarked) {
+          await chrome.runtime.sendMessage({
+            type: "BOUNTYRADAR_DELETE_CUSTOM_TARGET",
+            id: targetId
+          });
+          showToast(`Removed ${host} from bookmarks`, "⭐");
+        } else {
+          await chrome.runtime.sendMessage({
+            type: "BOUNTYRADAR_SAVE_CUSTOM_TARGET",
+            target: customTarget
+          });
+          showToast(`Saved ${host} to Bookmarks!`, "⭐");
+        }
+        await refreshState();
+      };
+    }
+
+    const policyUrl = (target.securityTxt && (target.securityTxt.policy || target.securityTxt.primaryContact)) || `https://${host}`;
+    activeTabPolicyLink.href = policyUrl;
+    activeTabPolicyLink.textContent = target.securityTxt && target.securityTxt.policy ? "Policy ↗" : "Contact ↗";
+    activeTabPolicyLink.title = `Open disclosure policy or contact for ${host}`;
+    activeTabPolicyLink.onclick = (e) => {
+      e.preventDefault();
+      openExternalUrl(policyUrl);
+    };
+
+    activeTabDomains.replaceChildren();
+    const sectxtPathCode = document.createElement("code");
+    sectxtPathCode.textContent = target.securityTxt?.url ? new URL(target.securityTxt.url).pathname : "/.well-known/security.txt";
+    activeTabDomains.appendChild(sectxtPathCode);
+
+    const hostCode = document.createElement("code");
+    hostCode.textContent = cleanHost;
+    activeTabDomains.appendChild(hostCode);
+
+    activeTabCopyBtn.textContent = "📋 Copy security.txt";
+    activeTabCopyBtn.onclick = () => {
+      const copyVal = target.securityTxt?.raw || (target.securityTxt?.contacts || []).join("\n") || host;
+      navigator.clipboard.writeText(copyVal).then(() => {
+        showToast("Copied security.txt to clipboard!", "📋");
+      });
+    };
+
+    if (target.securityTxt) {
+      renderSecurityTxtDirectives(target.securityTxt);
+    }
+  } else {
+    // Known Program mode (HackerOne, Bugcrowd, Self-Hosted, etc.)
+    activeTabBanner.classList.remove("is-sectxt-mode");
+    if (activeTabPill) activeTabPill.textContent = "🎯 CURRENT TAB IN SCOPE";
+    if (activeTabSaveBtn) activeTabSaveBtn.classList.add("hidden");
+
+    activeTabName.textContent = target.name;
+    activeTabReward.textContent = target.hasBounty ? (target.maxReward || "Bounty") : "VDP";
+    activeTabReward.className = `badge ${target.hasBounty ? "badge-bounty" : "badge-vdp"}`;
+
+    activeTabPolicyLink.href = target.url || "#";
+    activeTabPolicyLink.textContent = "Policy ↗";
+    activeTabPolicyLink.title = `Open ${target.name} rules & policy`;
+    activeTabPolicyLink.onclick = (e) => {
+      e.preventDefault();
+      if (target.url) {
+        openExternalUrl(target.url);
+      } else {
+        showToast("No policy URL found for active tab", "⚠️");
+      }
+    };
+
+    activeTabDomains.replaceChildren();
+    if (Array.isArray(target.domains)) {
+      for (const d of target.domains.slice(0, 4)) {
+        const code = document.createElement("code");
+        code.textContent = d;
+        activeTabDomains.appendChild(code);
+      }
+      if (target.domains.length > 4) {
+        const more = document.createElement("span");
+        more.textContent = `+${target.domains.length - 4} more`;
+        more.style.color = "var(--text-muted)";
+        activeTabDomains.appendChild(more);
+      }
+    }
+
+    activeTabCopyBtn.textContent = "📋 Copy Scope";
+    activeTabCopyBtn.onclick = () => {
+      navigator.clipboard.writeText((target.domains || []).join("\n")).then(() => {
+        showToast(`Copied ${target.domains.length} in-scope domains!`, "📋");
+      });
+    };
+
+    if (target.securityTxt) {
+      if (activeTabVerifiedBadge) activeTabVerifiedBadge.classList.remove("hidden");
+      renderSecurityTxtDirectives(target.securityTxt);
+    } else {
+      if (activeTabVerifiedBadge) activeTabVerifiedBadge.classList.add("hidden");
+      if (activeTabSectxtDetails) activeTabSectxtDetails.classList.add("hidden");
+    }
+  }
 }
 
 function renderUpdateBanner() {
@@ -471,6 +721,14 @@ function renderList() {
       wildBadge.className = "badge badge-wildcard";
       wildBadge.textContent = "🎯 Wildcard";
       badges.appendChild(wildBadge);
+    }
+
+    if (prog.isSecurityTxt) {
+      const secBadge = document.createElement("span");
+      secBadge.className = "badge badge-sectxt";
+      secBadge.textContent = "📜 security.txt";
+      secBadge.title = "RFC 9116 security.txt vulnerability disclosure policy";
+      badges.appendChild(secBadge);
     }
 
     // Hunter Tools: Bookmark ⭐ & Recon Note 📝
@@ -835,9 +1093,23 @@ async function refreshState() {
               const host = new URL(tabs[0].url).hostname;
               const matched = matchDomainAgainstPrograms(host, state.programs);
               if (matched) {
+                if (res.activeTabMatch && res.activeTabMatch.host === host && res.activeTabMatch.securityTxt) {
+                  matched.securityTxt = res.activeTabMatch.securityTxt;
+                }
                 renderActiveTabBanner(host, matched);
-              } else if (activeTabBanner) {
-                activeTabBanner.classList.add("hidden");
+              } else if (res.activeTabMatch && res.activeTabMatch.host === host && res.activeTabMatch.isSecurityTxt) {
+                renderActiveTabBanner(host, res.activeTabMatch);
+              } else {
+                // Query background RFC 9116 security.txt sniffer
+                chrome.runtime.sendMessage({ type: "BOUNTYRADAR_CHECK_SECURITY_TXT", host }).then((secRes) => {
+                  if (secRes && secRes.securityTxt) {
+                    renderActiveTabBanner(host, { isSecurityTxt: true, host, securityTxt: secRes.securityTxt });
+                  } else if (activeTabBanner) {
+                    activeTabBanner.classList.add("hidden");
+                  }
+                }).catch(() => {
+                  if (activeTabBanner) activeTabBanner.classList.add("hidden");
+                });
               }
             } catch (_) {}
           }

@@ -97,9 +97,10 @@ cd BountyRadar; npx web-ext run
 
 | Feature | Description |
 | :--- | :--- |
+| **📜 RFC 9116 security.txt Sniffer** | Passively detects hidden & unlisted VDPs on any domain you browse (`/.well-known/security.txt`) with PGP keys, direct contacts, and 1-click bookmarks. |
 | **🚀 In-App Auto-Updates** | Checks GitHub releases in the background and alerts researchers with 1-click update downloads. |
 | **✈️ Telegram & ✉️ Email Alerts** | Instant push webhook alerts to your Telegram bot or email digest when fresh bug bounty programs drop. |
-| **🎯 Active Tab Target Sniffer** | Instantly highlights when you browse an in-scope website (`💰 $15,000` / `🎯 In-Scope`). |
+| **🎯 Active Tab Target Sniffer** | Instantly highlights when you browse an in-scope website (`💰 $15,000` / `🎯 In-Scope` / `📜 VDP`). |
 | **🧰 Multi-Tool Exporter** | 1-Click exports for **Nuclei** (`targets.txt`), **Burp Suite Scope** (`burp_scope.json`), and **Subfinder**. |
 | **⭐ Bookmarks & 📝 Notes** | Star favorite programs and write private confidential recon notes directly onto target cards. |
 | **⚡ Zero-Click Sync** | Automatically pulls fresh data on startup; no manual sync clicking needed. |
@@ -108,7 +109,7 @@ cd BountyRadar; npx web-ext run
 | **♾️ Unlimited Live Ingestion** | Ingests 13,750+ programs and 39,600+ targets dynamically with cache-busting live diffs. |
 | **📊 5-Card Bento Grid** | Real-time counts for **Programs**, **🎯 Targets**, **🔥 Fresh**, **🌐 Self-Hosted**, and **🔒 Private**. |
 | **📋 1-Click Scope Copy** | Click **"Copy Scope"** on any program to copy all target domains formatted for recon CLI tools. |
-| **🏷️ Asset Category Chips** | Filter across `Web`, `API`, `Mobile`, `Cloud`, `Crypto`, and `Hardware/IoT`. |
+| **🏷️ Asset Category Chips** | Filter across `Web`, `API`, `Mobile`, `Cloud`, `Crypto`, `Hardware/IoT`, and `security.txt`. |
 | **🔍 Smart Search & Hotkey** | Press **`/`** to focus search across 30,000+ target domains, companies, countries, and platforms. |
 
 ---

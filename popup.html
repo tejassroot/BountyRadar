@@ -39,7 +39,7 @@
       <div class="title-meta">
         <div class="title-row">
           <h1 class="app-title">BountyRadar</h1>
-          <span class="version-badge">v1.3</span>
+          <span class="version-badge">v1.4</span>
         </div>
         <div class="status-indicator">
           <span class="live-dot"></span>
@@ -206,26 +206,62 @@
 
   <!-- Content List -->
   <main class="content-area">
-    <!-- Active Tab Target Sniffer Alert (Visible when active browser tab is in-scope) -->
+    <!-- Active Tab Target Sniffer Alert (Visible when active browser tab is in-scope or has security.txt) -->
     <div id="active-tab-banner" class="active-tab-card hidden">
       <div class="active-tab-top">
-        <div class="active-tab-radar-pulse">
+        <div class="active-tab-radar-pulse" id="active-tab-pulse">
           <span class="sonar-ring"></span>
           <span class="sonar-core"></span>
         </div>
         <div class="active-tab-meta">
           <div class="active-tab-badge-row">
-            <span class="active-tab-pill">🎯 CURRENT TAB IN SCOPE</span>
+            <span class="active-tab-pill" id="active-tab-pill">🎯 CURRENT TAB IN SCOPE</span>
             <span id="active-tab-reward" class="badge-reward"></span>
+            <span id="active-tab-verified-badge" class="badge badge-sectxt hidden" title="RFC 9116 security.txt present on domain">📜 security.txt</span>
           </div>
           <h2 class="active-tab-name" id="active-tab-name">Company Name</h2>
         </div>
-        <div class="active-tab-actions">
-          <button id="active-tab-copy-btn" class="btn-active-action" title="Copy in-scope domains">📋 Copy Scope</button>
+        <div class="active-tab-actions" id="active-tab-actions">
+          <button id="active-tab-copy-btn" class="btn-active-action" title="Copy in-scope domains or security.txt">📋 Copy Scope</button>
+          <button id="active-tab-save-btn" class="btn-active-action btn-save-target hidden" title="Save this target to Bookmarks">⭐ Save Target</button>
           <a id="active-tab-policy-link" href="#" target="_blank" class="btn-active-action primary" title="View Target Rules & Scope">Policy ↗</a>
         </div>
       </div>
       <div class="active-tab-domains" id="active-tab-domains"></div>
+
+      <!-- RFC 9116 security.txt Directives Panel -->
+      <div id="active-tab-sectxt-details" class="active-tab-sectxt-details hidden">
+        <div class="sectxt-meta-header">
+          <span class="sectxt-header-title">📜 RFC 9116 Security Directives</span>
+          <button id="active-tab-raw-sectxt-btn" class="btn-sectxt-raw" title="Copy raw security.txt file">Copy Raw</button>
+        </div>
+        <div class="sectxt-grid">
+          <div class="sectxt-item" id="sectxt-contact-item">
+            <span class="sectxt-label">Contact:</span>
+            <span class="sectxt-val" id="sectxt-contacts"></span>
+          </div>
+          <div class="sectxt-item hidden" id="sectxt-pgp-item">
+            <span class="sectxt-label">PGP Key:</span>
+            <a href="#" class="sectxt-link" id="sectxt-pgp-link" target="_blank">View Public Key ↗</a>
+          </div>
+          <div class="sectxt-item hidden" id="sectxt-policy-item">
+            <span class="sectxt-label">Policy:</span>
+            <a href="#" class="sectxt-link" id="sectxt-policy-link" target="_blank">Rules & Scope ↗</a>
+          </div>
+          <div class="sectxt-item hidden" id="sectxt-hof-item">
+            <span class="sectxt-label">Hall of Fame:</span>
+            <a href="#" class="sectxt-link" id="sectxt-hof-link" target="_blank">View Acknowledgments ↗</a>
+          </div>
+          <div class="sectxt-item hidden" id="sectxt-hiring-item">
+            <span class="sectxt-label">Hiring:</span>
+            <a href="#" class="sectxt-link" id="sectxt-hiring-link" target="_blank">Security Jobs ↗</a>
+          </div>
+          <div class="sectxt-item hidden" id="sectxt-expires-item">
+            <span class="sectxt-label">Expires:</span>
+            <span class="sectxt-val" id="sectxt-expires"></span>
+          </div>
+        </div>
+      </div>
     </div>
 
     <div id="loading-state" class="state-box hidden">

@@ -14,6 +14,7 @@ if (typeof importScripts === "function") {
 
 const STORAGE_KEYS = {
   PROGRAMS: "BOUNTYRADAR_PROGRAMS",
+  CUSTOM_TARGETS: "BOUNTYRADAR_CUSTOM_TARGETS",
   KNOWN_IDS: "BOUNTYRADAR_KNOWN_IDS",
   LAST_SYNC: "BOUNTYRADAR_LAST_SYNC",
   NEW_COUNT: "BOUNTYRADAR_NEW_COUNT",
@@ -33,6 +34,7 @@ let activeTabMatch = null;
 async function getStorageData() {
   const data = await chrome.storage.local.get([
     STORAGE_KEYS.PROGRAMS,
+    STORAGE_KEYS.CUSTOM_TARGETS,
     STORAGE_KEYS.KNOWN_IDS,
     STORAGE_KEYS.LAST_SYNC,
     STORAGE_KEYS.NEW_COUNT,
@@ -56,8 +58,13 @@ async function getStorageData() {
     email: { ...defaultSettings.email, ...(storedSettings.email || {}) }
   };
 
+  const customTargets = Array.isArray(data[STORAGE_KEYS.CUSTOM_TARGETS]) ? data[STORAGE_KEYS.CUSTOM_TARGETS] : [];
+  const storedPrograms = Array.isArray(data[STORAGE_KEYS.PROGRAMS]) ? data[STORAGE_KEYS.PROGRAMS] : [];
+  const programs = [...customTargets, ...storedPrograms];
+
   return {
-    programs: Array.isArray(data[STORAGE_KEYS.PROGRAMS]) ? data[STORAGE_KEYS.PROGRAMS] : [],
+    programs,
+    customTargets,
     knownIds: Array.isArray(data[STORAGE_KEYS.KNOWN_IDS]) ? new Set(data[STORAGE_KEYS.KNOWN_IDS]) : new Set(),
     lastSync: data[STORAGE_KEYS.LAST_SYNC] || 0,
     newCount: data[STORAGE_KEYS.NEW_COUNT] || 0,
@@ -183,6 +190,205 @@ function matchDomainAgainstPrograms(host, programs) {
   return null;
 }
 
+// ==========================================================================
+// RFC 9116 security.txt Passive Sniffer & Parser
+// ==========================================================================
+const securityTxtCache = new Map();
+const SECTXT_CACHE_TTL = 12 * 60 * 60 * 1000; // 12-hour TTL to prevent redundant requests
+
+function parseSecurityTxt(rawText, sourceUrl, host) {
+  if (!rawText || typeof rawText !== "string") return null;
+
+  const trimmed = rawText.trim();
+  // Reject HTML / XML false positives commonly returned by SPA 404 fallbacks
+  if (
+    trimmed.startsWith("<") ||
+    /<html[\s>]/i.test(trimmed) ||
+    /<body[\s>]/i.test(trimmed) ||
+    /<head[\s>]/i.test(trimmed) ||
+    /<!doctype/i.test(trimmed)
+  ) {
+    return null;
+  }
+
+  const lines = trimmed.split(/\r?\n/);
+  const contacts = [];
+  let policy = null;
+  let encryption = null;
+  let acknowledgments = null;
+  let hiring = null;
+  let expires = null;
+  let preferredLanguages = null;
+  let canonical = null;
+
+  let inPgpSignature = false;
+
+  for (let line of lines) {
+    line = line.trim();
+    if (!line) continue;
+
+    // Handle OpenPGP cleartext signature boundaries
+    if (line.startsWith("-----BEGIN PGP SIGNATURE-----")) {
+      inPgpSignature = true;
+      continue;
+    }
+    if (line.startsWith("-----END PGP SIGNATURE-----")) {
+      inPgpSignature = false;
+      continue;
+    }
+    if (inPgpSignature) continue;
+    if (line.startsWith("-----BEGIN PGP SIGNED MESSAGE-----") || line.startsWith("Hash:")) {
+      continue;
+    }
+
+    // Skip comment lines
+    if (line.startsWith("#")) continue;
+
+    const colonIdx = line.indexOf(":");
+    if (colonIdx === -1) continue;
+
+    const directive = line.slice(0, colonIdx).trim().toLowerCase();
+    const value = line.slice(colonIdx + 1).trim();
+    if (!value) continue;
+
+    switch (directive) {
+      case "contact":
+        contacts.push(value);
+        break;
+      case "policy":
+        if (!policy) policy = value;
+        break;
+      case "encryption":
+        if (!encryption) encryption = value;
+        break;
+      case "acknowledgments":
+      case "acknowledgements":
+        if (!acknowledgments) acknowledgments = value;
+        break;
+      case "hiring":
+        if (!hiring) hiring = value;
+        break;
+      case "expires":
+        if (!expires) expires = value;
+        break;
+      case "preferred-languages":
+        if (!preferredLanguages) preferredLanguages = value;
+        break;
+      case "canonical":
+        if (!canonical) canonical = value;
+        break;
+    }
+  }
+
+  // RFC 9116 Section 2.5.3 mandates at least one Contact directive
+  if (contacts.length === 0) {
+    return null;
+  }
+
+  let isExpired = false;
+  let expiresDate = null;
+  if (expires) {
+    try {
+      const d = new Date(expires);
+      if (!isNaN(d.getTime())) {
+        expiresDate = d.toISOString();
+        isExpired = d.getTime() < Date.now();
+      }
+    } catch (_) {}
+  }
+
+  return {
+    raw: rawText,
+    url: sourceUrl,
+    host: host || "",
+    contacts,
+    primaryContact: contacts[0] || null,
+    policy,
+    encryption,
+    acknowledgments,
+    hiring,
+    expires,
+    expiresDate,
+    isExpired,
+    preferredLanguages,
+    canonical
+  };
+}
+
+async function fetchSecurityTxt(host) {
+  if (!host || typeof host !== "string") return null;
+  const cleanHost = host.toLowerCase().trim().replace(/^www\./, "");
+
+  // Exclude non-routable, internal, or IP hostnames
+  if (
+    cleanHost === "localhost" ||
+    cleanHost.endsWith(".local") ||
+    cleanHost.endsWith(".internal") ||
+    cleanHost.endsWith(".onion") ||
+    !cleanHost.includes(".") ||
+    /^(?:\d{1,3}\.){3}\d{1,3}$/.test(cleanHost) ||
+    cleanHost.includes(":")
+  ) {
+    return null;
+  }
+
+  const cached = securityTxtCache.get(cleanHost);
+  if (cached && (Date.now() - cached.timestamp < SECTXT_CACHE_TTL)) {
+    return cached.data;
+  }
+
+  // Probe RFC 9116 primary and legacy paths
+  const urls = [
+    `https://${cleanHost}/.well-known/security.txt`,
+    `https://${cleanHost}/security.txt`
+  ];
+
+  for (const url of urls) {
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 3500);
+
+      const res = await fetch(url, {
+        method: "GET",
+        signal: controller.signal,
+        headers: { "Accept": "text/plain, text/*, */*" },
+        cache: "no-store",
+        redirect: "follow"
+      });
+      clearTimeout(timeoutId);
+
+      if (res.ok) {
+        const contentType = (res.headers.get("content-type") || "").toLowerCase();
+        if (contentType.includes("text/html")) {
+          continue;
+        }
+
+        const text = await res.text();
+        const parsed = parseSecurityTxt(text, url, cleanHost);
+        if (parsed) {
+          securityTxtCache.set(cleanHost, { data: parsed, timestamp: Date.now() });
+          return parsed;
+        }
+      }
+    } catch (_) {
+      // Network timeout / connection reset / CORS error -> proceed
+    }
+  }
+
+  // Cache null result to prevent repetitive network probes
+  securityTxtCache.set(cleanHost, { data: null, timestamp: Date.now() });
+  return null;
+}
+
+async function isTabStillActive(tabId) {
+  try {
+    const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
+    return tabs && tabs.length > 0 && tabs[0].id === tabId;
+  } catch (_) {
+    return true;
+  }
+}
+
 async function evaluateTab(tabId, url) {
   if (!url || !url.startsWith("http")) {
     activeTabMatch = null;
@@ -201,6 +407,8 @@ async function evaluateTab(tabId, url) {
     const matched = matchDomainAgainstPrograms(host, programs);
 
     if (matched) {
+      if (!(await isTabStillActive(tabId))) return;
+
       activeTabMatch = {
         host,
         program: matched,
@@ -211,10 +419,35 @@ async function evaluateTab(tabId, url) {
       chrome.action.setTitle({
         title: `BountyRadar: 🎯 In-Scope [${matched.name}] (${matched.hasBounty ? "Bounty" : "VDP"})`
       });
+
+      // Passive check for security.txt to enrich matched program with direct PGP/contact details
+      fetchSecurityTxt(host).then((secTxt) => {
+        if (secTxt && activeTabMatch && activeTabMatch.host === host) {
+          activeTabMatch.securityTxt = secTxt;
+        }
+      }).catch(() => {});
     } else {
-      activeTabMatch = null;
-      updateBadge(newCount);
-      chrome.action.setTitle({ title: "BountyRadar" });
+      // Check passive RFC 9116 security.txt sniffer for unlisted VDP
+      const secTxt = await fetchSecurityTxt(host);
+      if (!(await isTabStillActive(tabId))) return;
+
+      if (secTxt) {
+        activeTabMatch = {
+          host,
+          isSecurityTxt: true,
+          securityTxt: secTxt,
+          matchedAt: Date.now()
+        };
+        await chrome.action.setBadgeBackgroundColor({ color: "#0284c7" });
+        await chrome.action.setBadgeText({ text: "📜" });
+        chrome.action.setTitle({
+          title: `BountyRadar: 📜 RFC 9116 VDP Found [${host}]`
+        });
+      } else {
+        activeTabMatch = null;
+        updateBadge(newCount);
+        chrome.action.setTitle({ title: "BountyRadar" });
+      }
     }
   } catch (err) {
     console.debug("evaluateTab error:", err);
@@ -648,6 +881,50 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   if (msg.type === "BOUNTYRADAR_TEST_EMAIL") {
     sendEmailAlert(msg.apiKey, msg.toEmail, null, true).then((res) => {
       sendResponse(res);
+    });
+    return true;
+  }
+
+  if (msg.type === "BOUNTYRADAR_CHECK_SECURITY_TXT") {
+    fetchSecurityTxt(msg.host).then((secTxt) => {
+      sendResponse({ ok: true, securityTxt: secTxt });
+    });
+    return true;
+  }
+
+  if (msg.type === "BOUNTYRADAR_SAVE_CUSTOM_TARGET") {
+    getStorageData().then(async ({ customTargets, bookmarks }) => {
+      const target = msg.target;
+      if (!target || !target.id) {
+        sendResponse({ ok: false, error: "Invalid target" });
+        return;
+      }
+      const existing = (customTargets || []).filter((t) => t.id !== target.id);
+      const updatedTargets = [target, ...existing];
+      const updatedBookmarks = bookmarks.includes(target.id) ? bookmarks : [target.id, ...bookmarks];
+
+      await chrome.storage.local.set({
+        [STORAGE_KEYS.CUSTOM_TARGETS]: updatedTargets,
+        [STORAGE_KEYS.BOOKMARKS]: updatedBookmarks
+      });
+
+      sendResponse({ ok: true, customTargets: updatedTargets, bookmarks: updatedBookmarks });
+    });
+    return true;
+  }
+
+  if (msg.type === "BOUNTYRADAR_DELETE_CUSTOM_TARGET") {
+    getStorageData().then(async ({ customTargets, bookmarks }) => {
+      const id = msg.id;
+      const updatedTargets = (customTargets || []).filter((t) => t.id !== id);
+      const updatedBookmarks = (bookmarks || []).filter((b) => b !== id);
+
+      await chrome.storage.local.set({
+        [STORAGE_KEYS.CUSTOM_TARGETS]: updatedTargets,
+        [STORAGE_KEYS.BOOKMARKS]: updatedBookmarks
+      });
+
+      sendResponse({ ok: true, customTargets: updatedTargets, bookmarks: updatedBookmarks });
     });
     return true;
   }
