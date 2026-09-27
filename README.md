@@ -113,6 +113,39 @@ cd BountyRadar; npx web-ext run
 
 ---
 
+## ✈️ Real-Time Telegram & Email Alert Webhooks
+
+BountyRadar autonomously monitors global trackers in the background. When fresh bug bounty programs, unlisted self-hosted VDPs, or escalated scopes are detected, it immediately pushes structured alerts straight to your phone or desktop.
+
+### 📱 Live Preview: What Your Alert Looks Like
+
+```text
+🚨 BountyRadar Discovery Alert
+Found 3 newly discovered bug bounty programs!
+
+1. Acme Cloud Security
+• Type: 💰 Bounty | 🏢 HackerOne
+• Policy: https://hackerone.com/acme
+• In-Scope: *.acmecloud.com, api.acme.io
+
+2. Fintech Secure Ltd
+• Type: 🎯 VDP | 🌐 Self-Hosted
+• Policy: https://fintech.de/.well-known/security.txt
+• In-Scope: *.fintech.de, auth.fintech.de
+```
+
+### ⚙️ Setup Instructions
+
+#### 1. Telegram Bot Alerts (Zero Infrastructure, Free)
+1. **Create Bot:** Message [@BotFather](https://t.me/BotFather) on Telegram and send `/newbot`. Follow prompts and copy the **HTTP API Token**.
+2. **Activate:** Open your new bot's link (e.g., `t.me/your_bounty_bot`) and press **Start** (or send `/start`).
+3. **Get Chat ID:** Message [@userinfobot](https://t.me/userinfobot) on Telegram to get your numeric user **`Id`**.
+4. **Configure:** Open BountyRadar, click the **⚙️ (Settings)** icon in the header, toggle **Telegram Push Alerts**, paste your token and Chat ID, and click **"Ping Telegram Test"**.
+
+#### 2. Email Digest Alerts (via Resend API)
+1. Create a free account at [resend.com](https://resend.com) (includes 3,000 free emails/month) and generate an API key.
+2. Open BountyRadar Settings (**⚙️**), toggle **Email Digest Alerts**, enter your **Resend API Key** and **Destination Email**, then click **"Send Test Email"**.
+
 ## 🛠️ Tech Stack & Structure
 
 ```text
